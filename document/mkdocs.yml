@@ -1,0 +1,13 @@
+site_name: DeepMASS
+theme:
+  name: material
+
+nav:
+    - Home: index.md
+    - Installation: install.md
+    - Getting Started: start.md
+    - User Guide: guide.md
+    - About: about.md
+    
+plugins:
+    - mkdocs-video
