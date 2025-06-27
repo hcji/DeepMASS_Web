@@ -13,7 +13,7 @@ from rdkit import Chem
 from rdkit.Chem import rdFMCS, Draw
 
 from backend.load_config import GLOBAL_CONFIG
-
+import plotly.graph_objects as go
 # 从配置文件获取质谱图DPI和比例
 dpi_config = GLOBAL_CONFIG["identification"]["plot"]["dpi"]
 width_config = GLOBAL_CONFIG["identification"]["plot"]["width"]
@@ -76,61 +76,112 @@ def get_formula_mass(formula: str):
     return mass
 
 
-def add_topk_mz_text(ax, mz, intensities, is_reverse=False, top_k=3):
-    nlargest_index = heapq.nlargest(
-        top_k, range(len(intensities)), intensities.__getitem__
+def _mk_vertical_trace(mz, inten, color, name, reverse=False,
+                       n_seg: int = 15):
+    """
+    把 [0, intensity] 这一段细分成 n_seg 份，
+    每份再添加一个数据点 ⇒ 整根竖线处处可 Hover
+    """
+    sign = -1 if reverse else 1
+    x, y, cd = [], [], []
+
+    for m, i in zip(mz, inten):
+        # 从 0 → i，等距插值  n_seg + 1  个点（含 端点）
+        ys = np.linspace(0, sign * i, n_seg + 1)
+        xs = np.full_like(ys, m)
+
+        x  += xs.tolist() + [np.nan]
+        y  += ys.tolist() + [np.nan]
+        cd += [i] * (n_seg + 1) + [np.nan]
+
+    return go.Scatter(
+        x=x, y=y, customdata=cd,
+        mode="lines",
+        line=dict(color=color, width=1.6),
+        hovertemplate="m/z=%{x:.4f}<br>Intensity=%{customdata:.4f}",
+        name=name, showlegend=False
     )
-    print(nlargest_index)
-    for idx in nlargest_index:
-        if not is_reverse:
-            ax.text(mz[idx], intensities[idx], f"{round(mz[idx],4)}", _annotation_kws)
-        else:
-            ax.text(
-                mz[idx],
-                -1 * intensities[idx],
-                f"{round(mz[idx],4)}",
-                _annotation_reverse_kws,
-            )
 
+def plot_2_spectrum(spectrum: Spectrum,
+                    reference: Spectrum,
+                    loss: bool = False):
+    if spectrum is None or reference is None:
+        return None
 
-def plot_2_spectrum(spectrum: Spectrum, reference: Spectrum, loss=False):
-    mz, abundance = spectrum.peaks.mz, spectrum.peaks.intensities
-    mz1, abunds1 = reference.peaks.mz, reference.peaks.intensities
+    # ---------- 1) peak / loss ----------
+    mz_q, int_q = spectrum.peaks.mz, spectrum.peaks.intensities
+    mz_r, int_r = reference.peaks.mz, reference.peaks.intensities
+
     if loss:
         try:
-            spectrum = msfilters.add_parent_mass(spectrum)
-            spectrum = msfilters.add_losses(
-                spectrum, loss_mz_from=10.0, loss_mz_to=2000.0
-            )
+            spectrum  = msfilters.add_parent_mass(spectrum)
             reference = msfilters.add_parent_mass(reference)
-            reference = msfilters.add_losses(
-                reference, loss_mz_from=10.0, loss_mz_to=2000.0
-            )
-            mz, abundance = spectrum.losses.mz, spectrum.losses.intensities
-            mz1, abunds1 = reference.losses.mz, reference.losses.intensities
-        except:
-            print("Cannot Plot Losses")
-            abundance /= np.max(abundance)
-    abunds1 /= np.max(abunds1)
+            spectrum  = msfilters.add_losses(spectrum, 10.0, 2000.0)
+            reference = msfilters.add_losses(reference, 10.0, 2000.0)
 
-    fig = Figure(figsize=(width_config, length_config), dpi=dpi_config)
-    fig.subplots_adjust(top=0.95, bottom=0.3, left=0.18, right=0.95)
+            mz_q, int_q = spectrum.losses.mz,  spectrum.losses.intensities
+            mz_r, int_r = reference.losses.mz, reference.losses.intensities
+        except Exception as e:
+            print("Cannot plot losses:", e)
 
-    axes = fig.add_subplot(111)
-    axes.tick_params(width=0.8, labelsize=3)
-    axes.spines["bottom"].set_linewidth(0.5)
-    axes.spines["left"].set_linewidth(0.5)
-    axes.spines["right"].set_linewidth(0.5)
-    axes.spines["top"].set_linewidth(0.5)
-    axes.tick_params(width=0.8, labelsize=3)
-    axes.vlines(mz, ymin=0, ymax=abundance, color="r", lw=0.5)
-    axes.vlines(mz1, ymin=0, ymax=-abunds1, color="b", lw=0.5)
-    axes.axhline(y=0, color="black", lw=0.5)
-    axes.set_xlabel("m/z", fontsize=3.5)
-    axes.set_ylabel("abundance", fontsize=3.5)
-    add_topk_mz_text(axes, mz, abundance)
-    add_topk_mz_text(axes, mz1, abunds1, is_reverse=True)
-    axes.set_ylim(-1.9, 1.9)
+    # ---------- 2) 归一化 ----------
+    int_r = int_r / np.max(int_r) if np.max(int_r) else int_r
+    int_q = int_q / np.max(int_q) if np.max(int_q) else int_q
+
+    # ---------- 3) 图形 ----------
+    fig = go.Figure()
+    fig.add_trace(_mk_vertical_trace(mz_q, int_q, "red",  "Query"))
+    fig.add_trace(_mk_vertical_trace(mz_r, int_r, "blue", "Reference", reverse=True))
+
+    # ---------- 4) top-k 注释 ----------
+    # def annotate(mz, inten, reverse=False):
+    #     idx = np.argsort(inten)[-top_k:]
+    #     for i in idx:
+    #         fig.add_annotation(
+    #             x=float(mz[i]),
+    #             y=float((-1 if reverse else 1) * inten[i]),
+    #             text=f"{mz[i]:.4f}",
+    #             showarrow=False,
+    #             font=dict(size=8),
+    #             yshift=6 if reverse else -6
+    #         )
+    # annotate(mz_q, int_q, False)
+    # annotate(mz_r, int_r, True)
+
+    # ---------- 5) 外观 ----------
+    fig.update_layout(
+        autosize=True,
+        barmode="overlay",
+        bargap=0,
+        bargroupgap=0,
+        template="simple_white",
+        font=dict(family="Times New Roman", size=10, color="black"),
+        xaxis=dict(domain=[0.12, 0.95]),
+        yaxis=dict(domain=[0.12, 0.90]),
+        yaxis_range=[-1.1, 1.1],
+        margin=dict(l=60, r=25, t=40, b=55)
+    )
+
+    # --- 轴标题---
+    fig.update_xaxes(
+        title_text="m/z",
+        title_font=dict(size=18, family="Times New Roman"),
+        title_standoff=8,
+        showline=True, 
+        linewidth=2, 
+        linecolor="black"
+    )
+
+    fig.update_yaxes(
+        showgrid=False,
+        zeroline=True,
+        zerolinewidth=1.3,
+        zerolinecolor="black",
+        showline=True, linewidth=2, linecolor="black",
+        title_text="abundance",
+        title_font=dict(size=18, family="Times New Roman"),
+        title_standoff=8
+    )
     return fig
 
 

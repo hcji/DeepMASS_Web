@@ -52,10 +52,12 @@ with gr.Blocks(
         file_obj = gr.File(file_count="multiple", type="filepath", height=100)
         download = gr.File(visible=False, interactive=False)
     with gr.Row(elem_classes=["first_row"]):
-        run_save_btn = gr.Button("Save")
+        test_btn = gr.Button("Test File")
         run_deepms_btn = gr.Button(
             "Run DeepMS",
         )
+        run_save_btn = gr.Button("Save")
+
         # run_matchms_btn = gr.Button("Run MatchMS")
     #
     with gr.Row():
@@ -121,6 +123,21 @@ with gr.Blocks(
                 wrap=True,
             )
 
+
+    # Test 按钮：没有上传就走测试文件逻辑
+    def load_test_file(request: gr.Request):      # 只要这一个参数即可
+        return (
+            gr.update(value=["analogSearch_data/test.mgf"]),
+            *load_files(["analogSearch_data/test.mgf"], request)
+        )
+
+    test_btn.click(
+        fn=load_test_file,
+        inputs=[],          # 没有用户输入
+        outputs=[file_obj, res_state, nav_obj, target_zip_file_name_state],
+        api_name="load_test_file",
+    )
+    
     # 上传文件自动更新
     file_obj.upload(
         load_files,
