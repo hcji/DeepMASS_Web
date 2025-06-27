@@ -6,4 +6,7 @@ pwd
 source activate deepmass2
 lsof -i:12341 | grep 'TCP' | awk '{print $2}' | xargs kill -9
 lsof -i:8000 | grep 'TCP' | awk '{print $2}' | xargs kill -9
-python ./backend/gradio_app.py & python ./backend/register.py
+lsof -i:5578 | grep 'TCP' | awk '{print $2}' | xargs kill -9
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+export PYTHONPATH="$SCRIPT_DIR/backend:$PYTHONPATH"
+python ./backend/gradio_app.py & python ./backend/register.py & python ./gradio_analogSearch.py

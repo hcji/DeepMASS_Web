@@ -178,3 +178,6 @@ backend/temp/*
 **.db
 **.sqlite3
 backend/config/config.yaml
+
+analogSearch_data/*
+!analogSearch_data/test.mgf
