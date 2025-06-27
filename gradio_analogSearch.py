@@ -10,6 +10,7 @@ from analogSearch.gradio_service_search import (load_files, matchms_click_fn,
 from analogSearch.plot_utils import show_mol_search, show_ref_spectrum_search
 from analogSearch.clean_files import monitor_directory
 from backend.utils.auth import auth_ps
+import base64
 
 
 seafoam = Seafoam()
@@ -20,6 +21,12 @@ footer {visibility:hidden;}
 """
 
 
+def get_beian_image_as_base64(img_path: str) -> str:
+    
+    with open(img_path, 'rb') as f:
+        data = f.read()
+    base64_str = base64.b64encode(data).decode('utf-8')
+    return f"data:image/png;base64,{base64_str}"
 
 # 界面构建
 with gr.Blocks(title="Analog Search", css=custom_css, theme=seafoam) as demo:
@@ -260,7 +267,33 @@ with gr.Blocks(title="Analog Search", css=custom_css, theme=seafoam) as demo:
     #         target_zip_file_name_state # 更新 zip 名称
     #     ],
     # )
+    # 在所有组件之后添加备案信息组件
+    beian_img_src = get_beian_image_as_base64("./frontend/icon/beian.png")
+    # print("**************beian_img_src*************",beian_img_src[:100])
+    gr.HTML(f"""
+    <div style="width:360px; margin:36px auto 0 auto; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                gap: 16px; 
+                font-size: 10px;">
 
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002088"
+        target="_blank" rel="noreferrer"
+        style="display: flex; align-items: center; text-decoration: none; color: #a5aaa3;">
+        <img src="{beian_img_src}" alt="公安备案图标"
+                style="width: 13px; height: 13px; margin-right: 4px;">
+        <span>湘公网安备43010402002088号</span>
+        </a>
+
+
+        <a href="https://beian.miit.gov.cn/#/Integrated/index"
+        target="_blank" rel="noreferrer"
+        style="display: flex; align-items: center; text-decoration: none; color: #a5aaa3;">
+        <span>湘ICP备2025102844号-1</span>
+        </a>
+    </div>
+    """)
 if __name__ == "__main__":
 
     # 启动 Gradio 服务之前，先启动清理线程
