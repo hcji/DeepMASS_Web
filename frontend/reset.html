@@ -125,7 +125,7 @@
             <button class="layui-btn layui-btn-fluid" lay-submit lay-filter="demo-reg">reset</button>
         </div>
         <div style="margin-bottom: 10px;">
-            <a href="http://218.245.102.112:12341/">Login to existing account</a>
+            <a href="http://deepmass.cn/comp_ident/">Login to existing account</a>
         </div>
         <!-- 备案号添加 -->
         <div style="width:360px;margin:36px auto 0 auto;text-align:center;white-space: nowrap;">
@@ -167,7 +167,7 @@
             var json = JSON.stringify(field);
             
             $.ajax({
-                url: 'http://218.245.102.112:8000/reset_password', // Server URL
+                url: 'http://deepmass.cn:8000/reset_password', // Server URL
                 type: 'POST',           // Request method
                 contentType: 'application/json;', // Set request content type
                 data: json, // Convert JSON object to string and send
@@ -176,7 +176,7 @@
                     console.log(res);
                     // Handle response data and update page as needed
                     if (res['msg'] == "密码重置成功"){
-                        window.open('http://218.245.102.112:12341/', '_self');
+                        window.open('http://deepmass.cn/comp_ident/', '_self');
                     }
                 },
                 error: function (err) {
@@ -199,7 +199,7 @@
         $('#btnSendCode').addClass('layui-btn-disabled');
         $('#btnSendCode').text(curCount + "秒后重获");
         InterValObj = window.setInterval(SetRemainTime, 1000); // Start timer
-        $.get(`http://218.245.102.112:8000/sendmail?email=${email}`);
+        $.get(`http://deepmass.cn:8000/sendmail?email=${email}`);
     }
     function SetRemainTime() {
         if (curCount == 0) {

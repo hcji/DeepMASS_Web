@@ -8,7 +8,7 @@ DeepMASS_Web is an online platform developed from DeepMASS2, which enables deep-
 
 ## News
 
-[10/2024] Using DeepMASS2, we made a web UI interface, check it out! [Website](http://218.245.102.112/)
+[10/2024] Using DeepMASS2, we made a web UI interface, check it out! [Website](http://deepmass.cn/)
 
 ## Installation
 
@@ -93,7 +93,7 @@ If you want to build this website by yourself, please follow the installation st
 
 6. Create a `User_Information.db` database by yourself and place it in the `DeepMASS_Web/backend/sqlite` directory.
 
-7. Replace all instances of the IP address `218.245.102.112` in the files with the IP address of your own host.
+7. Replace all instances of the IP address `deepmass.cn` in the files with the IP address of your own host.
 
 8. Run DeepMASS_Web.
 

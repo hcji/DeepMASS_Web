@@ -308,7 +308,7 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=5578,
-        # root_path="/anal_sear",
+        root_path="/anal_sear",
         show_api=False,
         auth=auth_ps,
         max_threads=2,

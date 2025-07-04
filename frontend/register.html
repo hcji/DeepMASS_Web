@@ -222,7 +222,7 @@
             <button class="layui-btn layui-btn-fluid " lay-submit lay-filter="demo-reg">register</button>
         </div>
         <div style="margin-bottom: 10px;">
-            <a href="http://218.245.102.112:12341/">Login to existing account</a>
+            <a href="http://deepmass.cn/comp_ident/">Login to existing account</a>
         </div>
         <div>
             <a href="reset.html">Reset password</a>
@@ -276,7 +276,7 @@
             var json = JSON.stringify(field);
             
             $.ajax({
-                url: 'http://218.245.102.112:8000/register', // 服务器地址
+                url: 'http://deepmass.cn:8000/register', // 服务器地址
                 type: 'POST',           // 请求方式
                 contentType: 'application/json;', // 设置请求内容类型
                 data: json, // 将JSON对象转换为字符串并发送
@@ -286,7 +286,7 @@
                     console.log(res); // 打印返回的数据
                     // 在这里你可以根据返回的数据进行页面更新等操作
                     if (res['msg'] == "注册成功"){
-                        window.open('http://218.245.102.112:12341/', '_self');
+                        window.open('http://deepmass.cn/comp_ident/', '_self');
                     } else if (res['msg'] === "用户已经注册") {
                         layer.msg("该邮箱已注册，请直接登录或使用其它邮箱");
                     } else {
@@ -325,7 +325,7 @@
         $('#btnSendCode').addClass('layui-btn-disabled');
         $('#btnSendCode').text(curCount + "秒后重获");
         InterValObj = window.setInterval(SetRemainTime, 1000); // 启动计时器timer处理函数，1秒执行一次
-        $.get(`http://218.245.102.112:8000/sendmail?email=${email}`);
+        $.get(`http://deepmass.cn:8000/sendmail?email=${email}`);
 
     }
 

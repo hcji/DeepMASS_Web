@@ -22,6 +22,7 @@ os.environ["MPLCONFIGDIR"] = os.getcwd() + "/configs/"
 
 seafoam = Seafoam()
 import os
+# ROOT_PATH = os.getenv("GRADIO_ROOT_PATH", "/comp_ident")
 
 # path = "./frontend/icon/beian.png"
 # print("绝对路径:", os.path.abspath(path))
@@ -295,6 +296,8 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=12341,
+        # root_path=ROOT_PATH,
+        root_path="/comp_ident",  # 路径为 /comp_ident
         show_api=False,
         auth=auth_ps,
         max_threads=2,

@@ -28,7 +28,7 @@
         font-size: 26px;
     }
 </style>
-<form class="layui-form" action="http://218.245.102.112:8000/register/" method="post" id="addForm">
+<form class="layui-form" action="http://deepmass.cn:8000/register/" method="post" id="addForm">
     <div class="demo-reg-container">
         <div class="layui-form-item">
             <div class="layui-row">
@@ -178,7 +178,7 @@
         $('#btnSendCode').addClass('layui-btn-disabled');
         $('#btnSendCode').text(curCount + "秒后重获");
         InterValObj = window.setInterval(SetRemainTime, 1000); // 启动计时器timer处理函数，1秒执行一次
-        $.get(`http://218.245.102.112:8000/sendmail?email=${email}`);
+        $.get(`http://deepmass.cn:8000/sendmail?email=${email}`);
 
     }
 

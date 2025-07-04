@@ -16,7 +16,7 @@ and the following video for quick start.
 ## Web Server
 Using DeepMASS with web server, we made a easy-to-use web UI interface, check it out! 
 
-[Web Server](http://218.245.102.112/)
+[Web Server](http://deepmass.cn/)
 
 
 ## Sources on GitHub
