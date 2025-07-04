@@ -91,7 +91,11 @@ If you want to build this website by yourself, please follow the installation st
            length: 1
    ```
 
-6. Create a `User_Information.db` database by yourself and place it in the `DeepMASS_Web/backend/sqlite` directory.
+6. Using the `schema.sql` file located in `DeepMASS_Web/backend/sqlite`, create your empty database there with:
+
+   ```bash
+    sqlite3 ./backend/sqlite/User_Information.db < ./backend/sqlite/schema.sql
+   ```
 
 7. Replace all instances of the IP address `deepmass.cn` in the files with the IP address of your own host.
 
