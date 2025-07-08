@@ -212,7 +212,7 @@ If you want to build this website by yourself, please follow the installation st
 9. Run DeepMASS_Web.
 
    ```bash
-   sh run_replace.sh 
+   sh run.sh 
    ```
 
 10. Browser test.
