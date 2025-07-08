@@ -29,8 +29,8 @@ def get_beian_image_as_base64(img_path: str) -> str:
     return f"data:image/png;base64,{base64_str}"
 
 # 界面构建
-with gr.Blocks(title="Analog Search", css=custom_css, theme=seafoam) as demo:
-    gr.Markdown("# 🔍 Analog Search")
+with gr.Blocks(title="Analogue Searching", css=custom_css, theme=seafoam) as demo:
+    gr.Markdown("# 🔍 Analogue Searching")
     # 保存数据库路径
     # db_path_state = gr.State("data/all_data.mgf")
     # 保存读取文件的结果
