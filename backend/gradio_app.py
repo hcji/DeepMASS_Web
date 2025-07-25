@@ -28,6 +28,11 @@ import os
 # print("绝对路径:", os.path.abspath(path))
 # print("文件是否存在:", os.path.exists(path))
 
+from pathlib import Path
+
+
+nav_css = Path("frontend/nav.css").read_text(encoding="utf-8")
+
 """读取图片并转换为 base64 编码，返回 'data:image/png;base64,...' 形式的字符串"""
 def get_beian_image_as_base64(img_path: str) -> str:
     
@@ -37,8 +42,41 @@ def get_beian_image_as_base64(img_path: str) -> str:
     return f"data:image/png;base64,{base64_str}"
 
 with gr.Blocks(
-    title="DeepMS 2", theme=seafoam, css="footer {visibility: hidden}"
+    title="DeepMS 2", theme=seafoam, css=nav_css
 ) as demo:
+
+    gr.HTML("""
+    <nav class="topbar">
+    <a href="/comp_ident/" class="logo">DeepMass</a>
+
+    <!-- Link 下拉 -->
+    <div class="dropdown">
+        <button class="dd-btn">Link ▾</button>
+        <ul class="submenu">
+        <li><a href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm" target="_blank">Links to Papers</a></li>
+        <li><a href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm" target="_blank">Research Groups</a></li>
+        <li><a href="https://github.com/hcji/DeepMASS2_GUI/invitations" target="_blank">GitHub</a></li>
+        </ul>
+    </div>
+
+    <!-- About 下拉 -->
+    <div class="dropdown">
+        <button class="dd-btn">About ▾</button>
+        <ul class="submenu">
+        <li><a href="http://deepmass.cn/handbooks.html">Handbook</a></li>
+        <li><a href="http://deepmass.cn/introduce.html">Product Introduction</a></li>
+        </ul>
+    </div>
+
+    <!-- 普通链接 -->
+    <a href="http://deepmass.cn/contactus.html" class="item">Contact Us</a>
+    <a href="http://deepmass.cn/register.html"  class="item">Register</a>
+    </nav>
+    
+    """)
+    
+    gr.Markdown("<br>")
+
     # 保存读取文件的结果
     # res_state = gr.Dataframe(visible=False)
     res_state = gr.State([])

@@ -11,14 +11,12 @@ from analogSearch.plot_utils import show_mol_search, show_ref_spectrum_search
 from analogSearch.clean_files import monitor_directory
 from backend.utils.auth import auth_ps
 import base64
+from pathlib import Path
 
+
+nav_css = Path("frontend/nav.css").read_text(encoding="utf-8")
 
 seafoam = Seafoam()
-
-
-custom_css = """
-footer {visibility:hidden;}
-"""
 
 
 def get_beian_image_as_base64(img_path: str) -> str:
@@ -29,8 +27,40 @@ def get_beian_image_as_base64(img_path: str) -> str:
     return f"data:image/png;base64,{base64_str}"
 
 # 界面构建
-with gr.Blocks(title="Analogue Searching", css=custom_css, theme=seafoam) as demo:
-    gr.Markdown("# 🔍 Analogue Searching")
+with gr.Blocks(title="Analogue Searching", css=nav_css, theme=seafoam) as demo:
+    gr.HTML("""
+    <nav class="topbar">
+    <a href="/comp_ident/" class="logo">DeepMass</a>
+
+    <!-- Link 下拉 -->
+    <div class="dropdown">
+        <button class="dd-btn">Link ▾</button>
+        <ul class="submenu">
+        <li><a href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm" target="_blank">Links to Papers</a></li>
+        <li><a href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm" target="_blank">Research Groups</a></li>
+        <li><a href="https://github.com/hcji/DeepMASS2_GUI/invitations" target="_blank">GitHub</a></li>
+        </ul>
+    </div>
+
+    <!-- About 下拉 -->
+    <div class="dropdown">
+        <button class="dd-btn">About ▾</button>
+        <ul class="submenu">
+        <li><a href="http://deepmass.cn/handbooks.html">Handbook</a></li>
+        <li><a href="http://deepmass.cn/introduce.html">Product Introduction</a></li>
+        </ul>
+    </div>
+
+    <!-- 普通链接 -->
+    <a href="http://deepmass.cn/contactus.html" class="item">Contact Us</a>
+    <a href="http://deepmass.cn/register.html"  class="item">Register</a>
+    </nav>
+    
+    """)
+
+    gr.Markdown("<br>")    
+    gr.Markdown("## 🔍 Analogue Searching")
+
     # 保存数据库路径
     # db_path_state = gr.State("data/all_data.mgf")
     # 保存读取文件的结果
