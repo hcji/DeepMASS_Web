@@ -181,3 +181,7 @@ backend/config/config.yaml
 
 analogSearch_data/*
 !analogSearch_data/test.mgf
+
+/temp/*
+!/temp/.placeholder
+

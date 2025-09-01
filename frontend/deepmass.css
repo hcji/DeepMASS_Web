@@ -1,0 +1,425 @@
+/* 页面分为左右两个板块（2:10 栅格），左侧导航栏固定不动，右侧内容区域可以滚动 */
+body, html {
+  height: 100%;
+  margin: 0;
+   padding: 0;
+
+}
+
+.left-panel {
+  height: 100vh;         /* 固定高度 */
+  position: sticky;      /* 粘性固定 */
+  top: 0;
+  background-color: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  padding: 0rem;
+}
+
+.right-panel {
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+
+/* 导航栏背景颜色 */
+.custom-navbar {
+  background-color: #409eff !important;
+}
+
+#sidebar {
+  /* height: 100vh; */
+  overflow-y: auto;
+  background-color: #f8fcf7;
+  border-right: 1px solid #ddd;
+}
+
+#main-content {
+  padding: 20px;
+}
+
+
+#sidebar .list-group-item.active {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: white;
+}
+
+#spectrum-chart {
+  width: 100%;
+  height: 300px;
+}
+#result-table {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Settings 折叠面板整体扁平化样式 */
+#settingsAccordion .card {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+/* 设置标题样式 */
+#settingsAccordion .card-header {
+  background-color: transparent;
+  padding-left: 1rem !important;
+  border-bottom: px solid #ddd;
+  border-top: 1px solid #ddd;
+}
+
+
+/* 设置展开内容样式 */
+#settingsAccordion .card-body {
+  background-color: #f8f9fa;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid #409eff;
+  border-bottom: 1px solid #ddd;
+}
+
+/* 表单控件样式优化 */
+#settingsAccordion .form-group {
+  margin-bottom: 1rem;
+}
+
+#settingsAccordion label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+#settingsAccordion .form-check-label {
+  font-weight: normal;
+}
+
+#settingsAccordion .form-control,
+#settingsAccordion .form-control-file {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+}
+
+/* 上传区域整体样式 */
+#custom-db-upload {
+  padding: 20px;
+  border: 2px dashed #409eff;
+  border-radius: 8px;
+  background-color: #f0f8ff;
+  text-align: center;
+  transition: background-color 0.3s, border-color 0.3s;
+  cursor: pointer;
+  position: relative;
+}
+
+/* 鼠标悬浮时高亮 */
+#custom-db-upload:hover {
+  background-color: #e6f0ff;
+  border-color: #409eff;
+}
+
+/* 上传提示文本 */
+#custom-db-upload .upload-text {
+  font-size: 0.92rem;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+/* 上传图标 */
+#custom-db-upload .upload-icon {
+  font-size: 2rem;
+  color: #409eff;
+  margin-bottom: 8px;
+}
+
+/* 真正的 input 隐藏，但仍可点击 */
+#uploadCustomDb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 10;
+}
+
+
+/* 输入框宽度限制 */
+#thresholdInput {
+  max-width: 180px;
+}
+
+/* ==== 单选按钮美化（Default / Custom） ==== */
+#settingsAccordion .form-check-input[type="radio"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #409eff;
+  border-radius: 50%;
+  margin-top: 2px;
+  margin-right: 6px;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+#settingsAccordion .form-check-input[type="radio"]:checked::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background-color: #409eff;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  border-radius: 50%;
+}
+
+#settingsAccordion .form-check-label {
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: #333;
+}
+
+/* ==== 上传数据库区域美化 ==== */
+#custom-db-upload {
+  background-color: #eef4ff;
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1.5px dashed #409eff;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#custom-db-upload label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+}
+
+#uploadCustomDb {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  background-color: white;
+  transition: border-color 0.2s;
+}
+
+#uploadCustomDb:hover {
+  border-color: #409eff;
+  cursor: pointer;
+}
+
+.plot-placeholder {
+  position: relative;
+  background-color: rgba(51, 51, 51, 0.05) !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.label-text {
+  position: absolute;
+  top: 0.6em;
+  left: 0.6rem;
+  /* font-weight: bold; */
+  font-size: smaller;
+  color: #5a5a5a;
+  z-index: 1;
+}
+
+
+/* Settings 按钮 */
+#settingsAccordion .btn-link {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0rem;  /*对齐Cmpd Name*/
+  padding-right: 1rem;
+  height: 42px;
+  line-height: 1;
+  border: none;
+  background: none;
+  width: 100%;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+
+#settingsAccordion .btn-link i {
+  font-size: 1.25rem;
+  color: #666666;
+  margin-bottom: 0;  /* 保证和Cmpd Name图标对齐 */
+}
+
+.custom-navbar {
+  z-index: 1100; /* 确保导航栏最高 */
+}
+
+/* 针对导航栏内所有链接设置悬停动画 */
+.custom-navbar a.nav-link,
+.custom-navbar a.navbar-brand,
+.custom-navbar .dropdown-menu a.dropdown-item {
+  transition: transform 0.3s ease;
+  display: inline-block; /* 让transform生效 */
+  color: inherit; /* 默认继承颜色 */
+}
+
+.custom-navbar a.nav-link:hover,
+.custom-navbar a.navbar-brand:hover,
+.custom-navbar .dropdown-menu a.dropdown-item:hover {
+  /* transform: scale(1.1); */
+  color: #363D63 !important; /* 鼠标悬停变为黑色 */
+  text-decoration: none; /* 去掉默认下划线，可选 */
+}
+
+.dropdown-item {
+    transition: transform 0.3s;
+    font-size: 13px;
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+    transform: translateY(-5px);
+    background-color: rgba(154, 205, 50, 0.94) !important;
+    font-size: 20px;
+    color: black;
+}
+
+/* 导航项之间的间距 */
+.navbar-nav .nav-item {
+    margin-right: 10px;
+}
+
+/* 导航链接基础样式 */
+.navbar-nav .nav-link {
+    color: #fff;
+    font-size: 15px;
+}
+
+/* 鼠标悬停 */
+.navbar-nav .nav-link:hover {
+    background-color: transparent;
+    color: #000;
+}
+
+.top {
+  display: flex;
+  align-items: center;       /* 垂直居中 */
+  padding: 0 15px;
+  height: 50px;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: rgb(64, 158, 255);
+}
+
+
+/* 表格容器，限制高度，超出显示滚动条 */
+.table-responsive {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+/* 表格主体 */
+table.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px; /* 行间距稍微紧凑 */
+  font-size: 0.75rem; /* 文字更小 */
+  line-height: 1.3;   /* 行高紧凑 */
+  min-width: 600px;
+}
+
+/* 表头 */
+table.table thead tr {
+  background-color: #d0e7ff;
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 0.85rem;  /* 表头字体稍小 */
+  border-radius: 8px 8px 0 0;
+}
+
+/* 表头单元格 */
+table.table thead th {
+  padding: 8px 10px; /* 表头内边距更紧凑 */
+  text-align: left;
+  border-bottom: 1px solid #f9fbff;
+}
+
+/* 表格行 */
+table.table tbody tr {
+  background-color: #f9fbff;
+  border-radius: 6px;
+  transition: background-color 0.25s ease;
+  cursor: default;
+}
+
+/* 鼠标悬浮高亮 */
+table.table tbody tr:hover {
+  background-color: #d7eaff;
+}
+
+/* 表格单元格 */
+table.table tbody td {
+  padding: 6px 10px; /* 单元格内边距缩小 */
+  vertical-align: middle;
+  color: #34495e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 第一列左对齐且加粗 */
+table.table tbody td:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* 数字列右对齐，从第4列起 */
+table.table tbody td:nth-child(n+4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* #spectrum-list {
+  max-height: calc(100vh - 50px);
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+} */
+
+#spectrum-list .list-group-item {
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  padding-left: 2.5rem; /* 适度右移文字，更自然 */
+}
+
+
+#spectrum-list .list-group-item:hover {
+  background-color: #e7f1ff;
+  cursor: pointer;
+}
+
+#spectrum-list .list-group-item.active {
+  background-color: #409eff;
+  color: white;
+  font-weight: 600;
+} 
+.spectrum-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  overflow: hidden;
+}
+

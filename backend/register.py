@@ -8,6 +8,9 @@ from sqlalchemy.orm import declarative_base
 from backend.service.email_service import EmailSenderService
 from backend.service.user_service import UserService
 
+from backend.anal_sear import router_anal_sear
+# from backend.comp_ident import router_comp_ident
+
 engine = create_engine("sqlite:///./User_Information.db", echo=True)
 Base = declarative_base()
 
@@ -24,8 +27,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
+app.include_router(router_anal_sear.router)
+# app.include_router(router_comp_ident.router)
 class Register(BaseModel):
     contact_info: str
     vercode: str
@@ -76,4 +79,4 @@ if __name__ == "__main__":
     import uvicorn
 
     # app = gr.mount_gradio_app(app, io, path="/gradio")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("backend.register:app", host="0.0.0.0", workers=5)

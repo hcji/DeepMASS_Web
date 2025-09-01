@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Analogue Searching</title>
+<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css"> -->
+
+<link href="libs/bootstrap-5.3.0.min.css" rel="stylesheet">
+<link rel="stylesheet" href="libs/bootstrap-icons-1.13.1.css">
+<script src="libs/bootstrap-5.3.0.bundle.min.js"></script>
+<script src="libs/plotly-2.24.1.min.js"></script>
+
+
+
+
+<link rel="stylesheet" href="deepmass.css" />
+<style>
+  #result-table.table-responsive {
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+  }
+  #result-table table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    color: #333;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #result-table table th,
+  #result-table table td {
+    text-align: left !important;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+  }
+  #result-table table th {
+    background-color: #f1f3f5;
+    font-weight: 600;
+    color: #333;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  #result-table table td {
+    background-color: #ffffff;
+    transition: background-color 0.2s;
+  }
+  #result-table table tr:hover td {
+    background-color: #f8f9fa;
+  }
+  #plotly-spectrum, #plotly-loss {
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #annotated-structure {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  #structure-image {
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .plot-placeholder {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+  }
+  .plot-placeholder .bi {
+    display: inline-block;
+    z-index: 1;
+  }
+  .plot-placeholder .label-text {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    color: #333;
+    font-weight: 600;
+    display: block !important;
+  }
+  .plot-placeholder.has-data .bi {
+    display: none !important;
+  }
+  @media (max-width: 768px) {
+    #result-table table th,
+    #result-table table td {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    .plot-placeholder .label-text {
+      font-size: 12px;
+      top: 5px;
+      left: 5px;
+    }
+  }
+
+  #Top-k td:last-child {
+    text-align: left !important;
+  }
+
+</style>
+</head>
+<body>
+<div class="top custom-navbar text-white py-2 px-3">
+  <div class="navbar-header d-inline-block">
+    <a class="navbar-brand text-white fw-bold" data-no-turbolink="true" href="http://deepmass.cn/comp_ident/" style="font-size: 28px;">DeepMass</a>
+  </div>
+  <div class="d-inline-block ms-4" id="main-nav">
+    <ul class="nav">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle text-white" href="#" id="linkDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          Link
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="linkDropdown">
+          <li><a class="dropdown-item" href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm">Links to Papers</a></li>
+          <li><a class="dropdown-item" href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm">Research Groups</a></li>
+          <li><a class="dropdown-item" href="https://github.com/hcji/DeepMASS2_GUI/invitations">GitHub</a></li>
+        </ul>
+      </li>
+      <li class="nav-item dropdown ms-3">
+        <a class="nav-link dropdown-toggle text-white" href="#" id="aboutDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          About
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="aboutDropdown">
+          <li><a class="dropdown-item" href="handbooks.html">Handbook</a></li>
+          <li><a class="dropdown-item" href="introduce.html">Product Introduction</a></li>
+        </ul>
+      </li>
+      <li class="nav-item ms-3">
+        <a class="nav-link text-white" data-no-turbolink="true" href="contactus.html">Contact Us</a>
+      </li>
+      <li class="nav-item ms-3">
+        <a class="nav-link text-white" data-no-turbolink="true" href="register.html">Register</a>
+      </li>
+    </ul>
+  </div>
+</div>
+<div class="container-fluid" style="height: calc(100vh - 56px);">
+  <div class="row h-100">
+    <div id="sidebar" class="col-2 left-panel">
+      <div class="accordion" id="settingsAccordion">
+        <div class="card">
+          <div class="card-header p-2" id="headingSettings">
+            <h2 class="mb-0">
+              <button
+                class="btn btn-link text-start"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseSettings"
+                aria-expanded="false"
+                aria-controls="collapseSettings"
+              >
+                <i class="bi bi-gear me-2"></i>
+                Settings
+              </button>
+            </h2>
+          </div>
+          <div
+            id="collapseSettings"
+            class="collapse"
+            aria-labelledby="headingSettings"
+            data-bs-parent="#settingsAccordion"
+          >
+            <div class="card-body">
+              <form>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="d-block mb-1"><strong>DB</strong></label>
+                    <div class="form-check form-check-inline mb-2">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        name="dbOption"
+                        id="dbDefault"
+                        value="Default"
+                        checked
+                      />
+                      <label class="form-check-label" for="dbDefault">Default</label>
+                    </div>
+                    <div class="form-check form-check-inline mb-2">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        name="dbOption"
+                        id="dbCustom"
+                        value="Custom"
+                      />
+                      <label class="form-check-label" for="dbCustom">Custom</label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="thresholdInput" class="mb-1"><strong>Threshold</strong></label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="thresholdInput"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value="0.85"
+                    />
+                  </div>
+                </div>
+                <div class="form-group mt-3" style="display: none;" id="custom-db-upload">
+                  <i class="bi bi-database-fill-up"></i>
+                  <div class="upload-text">Click or drag to upload mass spectrometry database files (.mgf, .msp, .mat)</div>
+                  <input
+                    type="file"
+                    id="uploadCustomDb"
+                    accept=".mgf,.msp,.mat"
+                  />
+                  <span id="customDbFileName" class="small text-primary mt-2"></span>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="spectrum-container mt-0">
+        <div class="spectrum-header d-flex align-items-center px-3 py-2 border-bottom">
+          <i class="bi bi-card-list me-2 text-dark"></i>
+          <h6 class="mb-0" title="Compound Name">Cmpd Name</h6>
+        </div>
+        <div class="list-group" id="spectrum-list" style="max-height: calc(100vh - 50px); overflow-y: auto;">
+        </div>
+      </div>
+    </div>
+    <div id="main-content" class="col-10 right-panel">
+      <div class="row mb-3">
+        <div class="col d-flex justify-content-start align-items-center flex-wrap gap-2">
+          <input type="file" id="uploadFile" accept=".mgf,.msp,.mat" style="display:none" />
+          <button class="btn btn-md shadow-sm" id="btnUploadFile" title="Upload File" style="background-color: #409eff; color: white; border-color: #409eff;">
+            <i class="bi bi-upload me-1"></i> Upload File
+          </button>
+          <button class="btn btn-secondary btn-md shadow-sm" id="btnTestFile" title="Test File">
+            <i class="bi bi-file-earmark-text me-1"></i> Test File
+          </button>
+          <button class="btn btn-warning btn-md shadow-sm" id="btnRun" title="Run Searching">
+            <i class="bi bi-play-circle me-1"></i> Run Searching
+          </button>
+          <button class="btn btn-success btn-md shadow-sm text-white" id="btnSave" title="Save Results">
+            <i class="bi bi-save me-1"></i> Save Results
+          </button>
+        </div>
+        <div class="col-auto d-flex justify-content-end align-items-center">
+          <button type="button" class="btn btn-danger" id="btnClear" title="Clear Data">
+            <i class="bi bi-trash me-1"></i> Clear
+          </button>
+        </div>
+      </div>
+      <div id="welcomeMessage" class="border p-3 mb-3" style="background:#f8f9fa;">
+        <strong>Welcome to Analogue Searching</strong>
+        <div class="mt-2 text-muted">Please upload a file or click the <strong>Test File</strong> button to start.</div>
+      </div>
+      <div id="uploadResult" class="border p-3 mb-3" style="display:none; background:#f8f9fa;">
+        <strong>Upload successful!</strong>
+        <div class="mt-2">The uploaded file is...</div>
+      </div>
+
+      <h6 class="fw-bold">Top-k</h6>
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-sm table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Rank</th>
+              <th>Score</th>
+              <th>Database_index</th>
+              <th>SMILES</th>
+            </tr>
+          </thead>
+          <tbody id="Top-k">
+            <!-- 动态插入数据 -->
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="nav nav-tabs" id="tabMenu" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="tab-spectrum" data-bs-toggle="tab" href="#spectrum" role="tab" aria-controls="spectrum" aria-selected="true">Spectrum</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-structure" data-bs-toggle="tab" href="#structure" role="tab" aria-controls="structure" aria-selected="false">Structure</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-result" data-bs-toggle="tab" href="#result" role="tab" aria-controls="result" aria-selected="false">Information</a>
+        </li>
+      </ul>
+      <div class="tab-content flex-grow-1 overflow-auto" id="tabContent" style="min-height: 380px;">
+        <div class="tab-pane fade show active" id="spectrum" role="tabpanel" aria-labelledby="tab-spectrum">
+          <div class="d-flex gap-3" style="width: 100%; height: 300px; margin-top: 10px;">
+            <div id="plotly-spectrum" class="plot-placeholder flex-grow-1" style="height: 100%;">
+              <i class="bi bi-graph-up me-2 text-dark"></i>
+              <div class="label-text">Spectrum</div>
+            </div>
+            <div id="plotly-loss" class="plot-placeholder flex-grow-1" style="height: 100%;">
+              <i class="bi bi-graph-up me-2 text-dark"></i>
+              <div class="label-text">Loss</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="structure" role="tabpanel" aria-labelledby="tab-structure">
+          <div class="d-flex gap-3" style="width: 100%; height: 300px; margin-top: 10px;">
+            <div id="annotated-structure" class="plot-placeholder flex-grow-1" style="height: 100%;">
+              <i class="bi bi-activity me-2 text-dark"></i>
+              <div class="label-text">Structure</div>
+              <img id="structure-image" style="max-width: 80%; max-height: 80%; display: none;" />
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="result" role="tabpanel" aria-labelledby="tab-result">
+          <div id="result-table" class="table-responsive overflow-auto" style="width: 100%; height: 300px; margin-top: 10px;">
+            <table class="table table-bordered table-sm table-hover mb-0">
+              <thead class="thead-light" id="result-thead"></thead>
+              <tbody id="result-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+    <!-- 备案号添加 -->
+    <div style="width:360px;margin:10px auto 10px auto;text-align:center;white-space: nowrap;">
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002088" target="_blank" style="text-decoration:none;" rel="noreferrer">
+          <img src="icon/beian.png" style="width:13px;height:13px;vertical-align:middle;">
+          <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘公网安备43010402002088号</span>
+        </a>
+        <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" style="text-decoration:none;margin-left:8px;" rel="noreferrer">
+          <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘ICP备2025102844号-1</span>
+        </a>
+    </div>
+    </div>
+  </div>
+
+
+
+</div>
+<script>
+  let currentUploadFile = null;
+  let currentUuidFilename = null;
+  let isTestFileSelected = false;
+  let analysisResults = [];
+  let stateUuid = null;
+  let targetZipFileName = null;
+  let pollingInterval = null;
+
+  let resultsByQuery = {};   // { 1: [topk items...], 2: [...], ... }
+  let selectedQueryIdx = null;
+  window.stateUuid = null;
+  
+  const uploadInput = document.getElementById("uploadFile");
+  const btnUploadFile = document.getElementById("btnUploadFile");
+  const btnTestFile = document.getElementById("btnTestFile");
+  const uploadResult = document.getElementById("uploadResult");
+  const spectrumList = document.getElementById("spectrum-list");
+  const welcomeMessage = document.getElementById("welcomeMessage");
+  const btnRun = document.getElementById("btnRun");
+  const thresholdInput = document.getElementById("thresholdInput");
+  const resultTbody = document.getElementById("result-tbody");
+  const resultThead = document.getElementById("result-thead");
+  const btnClear = document.getElementById("btnClear");
+  const btnSave = document.getElementById("btnSave");
+  const dbDefault = document.getElementById("dbDefault");
+  const dbCustom = document.getElementById("dbCustom");
+  const customDbUpload = document.getElementById("custom-db-upload");
+  const uploadCustomDb = document.getElementById("uploadCustomDb");
+  const customDbFileName = document.getElementById("customDbFileName");
+
+  const topkTbody = document.getElementById("Top-k");
+  const plotlySpectrum = document.getElementById("plotly-spectrum");
+  const plotlyLoss = document.getElementById("plotly-loss");
+  const annotatedStructure = document.getElementById("annotated-structure");
+  const structureImg = document.getElementById("structure-image");
+
+  async function ensureSession() {
+    try {
+      const res = await fetch("http://deepmass.cn:8000/anal_search/start-session", {
+        method: "GET",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data?.status !== "success") throw new Error("start-session failed");
+      return true;
+    } catch (e) {
+      console.error("ensureSession error:", e);
+      alert("Session initialization failed. Please check your network connection or try again later.");
+      return false;
+    }
+  }
+
+  function toggleButtonStates(disable) {
+    btnUploadFile.disabled = disable;
+    btnTestFile.disabled = disable;
+    btnRun.disabled = disable || (dbCustom.checked && !customDbFileName.textContent.includes("Processed successfully"));
+    btnSave.disabled = disable;
+    btnUploadFile.innerHTML = disable ? `<i class="bi bi-upload me-1"></i> Upload File (Processing...)` : `<i class="bi bi-upload me-1"></i> Upload File`;
+    btnTestFile.innerHTML = disable ? `<i class="bi bi-file-earmark-text me-1"></i> Test File (Processing...)` : `<i class="bi bi-file-earmark-text me-1"></i> Test File`;
+    btnRun.innerHTML = disable ? `<i class="bi bi-hourglass-split me-1"></i> Running...` : `<i class="bi bi-play-circle me-1"></i> Run Searching`;
+    btnSave.innerHTML = disable ? `<i class="bi bi-save me-1"></i> Save Results (Processing...)` : `<i class="bi bi-save me-1"></i> Save Results`;
+  }
+
+  function groupResultsByQuery(flatList) {
+    const m = {};
+    flatList.forEach(it => {
+      const qi = Number(it.query_index ?? 1);
+      if (!m[qi]) m[qi] = [];
+      m[qi].push(it);
+    });
+    Object.keys(m).forEach(qi => {
+      m[qi].sort((a, b) => Number(a.rank || 999) - Number(b.rank || 999));
+    });
+    return m;
+  }
+
+  function renderInformationFromItem(item) {
+    if (!item) {
+      resultThead.innerHTML = "";
+      resultTbody.innerHTML = `<tr><td class="text-center" colspan="4">No data</td></tr>`;
+      return;
+    }
+    const keys = Object.keys(item).filter(k => !["spectrum_plot","spectrum_loss_plot","ref_structure_plot"].includes(k));
+    if (keys.length === 0) {
+      resultThead.innerHTML = "";
+      resultTbody.innerHTML = `<tr><td class="text-center" colspan="4">No data</td></tr>`;
+      return;
+    }
+    resultThead.innerHTML = `<tr>${keys.map(k=>`<th class="text-start">${k}</th>`).join("")}</tr>`;
+    resultTbody.innerHTML = `<tr>${keys.map(k=>`<td class="text-start">${item[k] ?? ""}</td>`).join("")}</tr>`;
+  }
+
+function renderTopKForQuery(qi) {
+  selectedQueryIdx = qi;
+  const topkAll = resultsByQuery[qi] || [];
+
+  // === 读取 threshold 并过滤 ===
+  let threshold = parseFloat(document.getElementById("thresholdInput").value);
+  if (isNaN(threshold)) threshold = 0.0;
+  const topk = topkAll.filter(item => {
+    return item.StructSimScore !== null && item.StructSimScore >= threshold;
+  });
+
+  if (!topk.length) {
+    topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates (Score < ${threshold})</td></tr>`;
+    Plotly.purge("plotly-spectrum");
+    Plotly.purge("plotly-loss");
+    structureImg.style.display = "none";
+    plotlySpectrum.classList.remove("has-data");
+    plotlyLoss.classList.remove("has-data");
+    annotatedStructure.classList.remove("has-data");
+    renderInformationFromItem(null);
+    return;
+  }
+
+  topkTbody.innerHTML = topk.map(item => {
+    const rank = item.rank ?? "";
+    const score = item.StructSimScore ?? "";
+    const dbi = item.database_index ?? "";
+    const smiles = item.smiles ?? "";
+    return `
+      <tr class="topk-row" data-q="${item.query_index}" data-rank="${item.rank}" style="cursor:pointer">
+        <td>Top ${rank}</td>
+        <td>${score}</td>
+        <td>${dbi}</td>
+        <td>${smiles}</td>
+      </tr>`;
+  }).join("");
+
+  document.querySelectorAll(".topk-row").forEach(tr => {
+    tr.addEventListener("click", async (ev) => {
+      const qiN = Number(tr.dataset.q);
+      const rkN = Number(tr.dataset.rank);
+      document.querySelectorAll(".topk-row").forEach(row => row.classList.remove("table-active"));
+      tr.classList.add("table-active");
+      const item = (resultsByQuery[qiN] || []).find(x => Number(x.rank) === Number(rkN));
+      if (item) {
+        await displayCandidateDetail(item);
+        renderInformationFromItem(item);
+      }
+    });
+  });
+
+  // 默认显示第一个满足阈值的
+  const first = topk[0];
+  const firstRow = document.querySelector(`.topk-row[data-q="${first.query_index}"][data-rank="${first.rank}"]`);
+  if (firstRow) firstRow.classList.add("table-active");
+  displayCandidateDetail(first);
+  renderInformationFromItem(first);
+}
+
+
+  function displayResultByIndex(index) {
+    if (!analysisResults || analysisResults.length === 0 || !analysisResults[index]) {
+      resultThead.innerHTML = "";
+      resultTbody.innerHTML = `<tr><td colspan="1" class="text-center">No results to display</td></tr>`;
+      Plotly.purge("plotly-spectrum");
+      Plotly.purge("plotly-loss");
+      document.getElementById("structure-image").style.display = "none";
+      document.getElementById("plotly-spectrum").classList.remove("has-data");
+      document.getElementById("plotly-loss").classList.remove("has-data");
+      document.getElementById("annotated-structure").classList.remove("has-data");
+      new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
+      return;
+    }
+    const item = analysisResults[index];
+    const keys = Object.keys(item).filter(k => !["spectrum_plot", "spectrum_loss_plot", "ref_structure_plot"].includes(k));
+    resultThead.innerHTML = `<tr>${keys.map(k=>`<th class="text-start">${k}</th>`).join("")}</tr>`;
+    resultTbody.innerHTML = `<tr>${keys.map(k=>`<td class="text-start">${item[k] ?? ""}</td>`).join("")}</tr>`;
+
+    const spectrumPlot = item.spectrum_plot ? JSON.parse(item.spectrum_plot) : null;
+    const spectrumLossPlot = item.spectrum_loss_plot ? JSON.parse(item.spectrum_loss_plot) : null;
+    const refStructure = item.ref_structure_plot || null;
+
+    if (spectrumPlot) {
+      Plotly.newPlot("plotly-spectrum", spectrumPlot.data, {
+        ...spectrumPlot.layout,
+        width: plotlySpectrum.offsetWidth,
+        height: plotlySpectrum.offsetHeight
+      }, { responsive: true });
+      plotlySpectrum.classList.add("has-data");
+    } else { Plotly.purge("plotly-spectrum"); plotlySpectrum.classList.remove("has-data"); }
+
+    if (spectrumLossPlot) {
+      Plotly.newPlot("plotly-loss", spectrumLossPlot.data, {
+        ...spectrumLossPlot.layout,
+        width: plotlyLoss.offsetWidth,
+        height: plotlyLoss.offsetHeight
+      }, { responsive: true });
+      plotlyLoss.classList.add("has-data");
+    } else { Plotly.purge("plotly-loss"); plotlyLoss.classList.remove("has-data"); }
+
+    if (refStructure) { structureImg.src = refStructure; structureImg.style.display = "block"; annotatedStructure.classList.add("has-data"); }
+    else { structureImg.style.display = "none"; annotatedStructure.classList.remove("has-data"); }
+
+    new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
+  }
+
+  // 监听 Bootstrap 的 Tab 切换事件
+  document.querySelectorAll('#tabMenu a[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', (e) => {
+      if (e.target.id === 'tab-spectrum') {
+        if (plotlySpectrum.classList.contains("has-data")) {
+          Plotly.Plots.resize("plotly-spectrum");
+        }
+        if (plotlyLoss.classList.contains("has-data")) {
+          Plotly.Plots.resize("plotly-loss");
+        }
+      }
+    });
+  });
+
+  function startCustomDbPolling(filename, fileSizeMB) {
+    if (pollingInterval) clearInterval(pollingInterval);
+    const POLLING_TIMEOUT = fileSizeMB > 100 ? 15 * 60 * 1000 : 10 * 60 * 1000;
+    let startTs = Date.now();
+    customDbFileName.textContent = `Processing custom database: ${filename} (may take a few minutes)...`;
+    btnRun.disabled = true;
+
+    pollingInterval = setInterval(async () => {
+      if (Date.now() - startTs > POLLING_TIMEOUT) {
+        clearInterval(pollingInterval); pollingInterval = null;
+        customDbFileName.textContent = "";
+        uploadCustomDb.value = null;
+        uploadResult.style.display = "block";
+        welcomeMessage.style.display = "none";
+        uploadResult.innerHTML = `<strong>Processing failed:</strong><div class="mt-2 text-danger">Processing timed out after ${fileSizeMB > 100 ? 15 : 10} minutes</div>`;
+        btnRun.disabled = false; toggleButtonStates(false);
+        return;
+      }
+      try {
+        const res = await fetch(`http://deepmass.cn:8000/anal_search/custom-db-status`, { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.status === "success") {
+          clearInterval(pollingInterval); pollingInterval = null;
+          customDbFileName.textContent = `${data.filename} (Processed successfully)`;
+          uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+          uploadResult.innerHTML = `<strong>Custom database processed successfully!</strong><div class="mt-2">${data.message}</div>`;
+          btnRun.disabled = false; toggleButtonStates(false);
+        } else if (data.status === "error") {
+          clearInterval(pollingInterval); pollingInterval = null;
+          customDbFileName.textContent = ""; uploadCustomDb.value = null;
+          uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+          uploadResult.innerHTML = `<strong>Processing failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+          btnRun.disabled = false; toggleButtonStates(false);
+        } else if (data.status === "idle") {
+          if (Date.now() - startTs > 30000) {
+            clearInterval(pollingInterval); pollingInterval = null;
+            customDbFileName.textContent = ""; uploadCustomDb.value = null;
+            uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+            uploadResult.innerHTML = `<strong>Processing failed:</strong><div class="mt-2 text-danger">Database processing not started, possibly due to invalid file or server error.</div>`;
+            btnRun.disabled = false; toggleButtonStates(false);
+          }
+        }
+      } catch (e) {
+        console.error("poll error:", e);
+        clearInterval(pollingInterval); pollingInterval = null;
+        customDbFileName.textContent = ""; uploadCustomDb.value = null;
+        uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+        uploadResult.innerHTML = `<strong>Processing failed:</strong><div class="mt-2 text-danger">Failed to check status: ${e.message}</div>`;
+        btnRun.disabled = false; toggleButtonStates(false);
+      }
+    }, 5000);
+  }
+
+  // —— 事件绑定 —— 
+  document.addEventListener("DOMContentLoaded", async () => {
+    await ensureSession(); // 触发服务端下发 Cookie
+  });
+
+  btnUploadFile.addEventListener("click", async () => {
+    uploadInput.value = null;
+    uploadInput.click();
+  });
+
+  uploadInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    isTestFileSelected = false;
+    currentUploadFile = file;
+    currentUuidFilename = null;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      toggleButtonStates(true);
+      const response = await fetch(`http://deepmass.cn:8000/anal_search/upload`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      const data = await response.json();
+      welcomeMessage.style.display = "none";
+      uploadResult.style.display = "block";
+
+      if (data.status === "success") {
+        currentUploadFile = file;
+        currentUuidFilename = data.uuid_filename;
+        uploadResult.innerHTML = `<strong>${data.message}</strong><div class="mt-2">Uploaded file: ${file.name}</div>`;
+        spectrumList.innerHTML = "";
+        const nameArray = Object.values(data.names?.title || {});
+        if (nameArray.length === 0) {
+          uploadResult.innerHTML += `<div class="text-danger mt-2">Warning: File does not contain valid data</div>`;
+          currentUploadFile = null; currentUuidFilename = null;
+        } else {
+          nameArray.forEach((name, index) => {
+            const a = document.createElement("a");
+            a.href = "#"; a.className = "list-group-item list-group-item-action";
+            a.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${name}`;
+            a.dataset.index = index;
+            a.addEventListener("click", (ev)=>{ 
+              ev.preventDefault(); 
+              renderTopKForQuery(index + 1); // 左侧第 index 项，对应的 query_index = index + 1
+            });
+            spectrumList.appendChild(a);
+          });
+        }
+      } else {
+        currentUploadFile = null; currentUuidFilename = null;
+        uploadResult.innerHTML = `<strong>Upload failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+      }
+    } catch (err) {
+      currentUploadFile = null; currentUuidFilename = null;
+      uploadResult.style.display = "block";
+      uploadResult.innerHTML = `<strong>Upload failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
+    } finally {
+      toggleButtonStates(false);
+    }
+  });
+
+  btnTestFile.addEventListener("click", async () => {
+    currentUploadFile = null;
+    currentUuidFilename = null;
+    isTestFileSelected = true;
+    welcomeMessage.style.display = "none";
+    uploadResult.style.display = "block";
+
+    const testFileName = "test.mgf";
+    uploadResult.innerHTML = `
+      <strong>Test file loaded successfully!</strong>
+      <div class="mt-2">
+        <a href="http://deepmass.cn:8000/anal_search/download-test-file" download="${testFileName}" class="btn btn-primary btn-sm">
+          <i class="bi bi-download me-1"></i> Download Test File
+        </a>
+      </div>
+    `;
+
+    try {
+      toggleButtonStates(true);
+      const response = await fetch(`http://deepmass.cn:8000/anal_search/upload-test-file`, {
+        method: "GET",
+        credentials: "include"
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        spectrumList.innerHTML = "";
+        const nameArray = Object.values(data.names?.title || {});
+        nameArray.forEach((name, index) => {
+          const a = document.createElement("a");
+          a.href = "#"; a.className = "list-group-item list-group-item-action";
+          a.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${name}`;
+          a.dataset.index = index;
+          a.addEventListener("click", (ev)=>{ 
+            ev.preventDefault(); 
+            renderTopKForQuery(index + 1); // 左侧第 index 项，对应的 query_index = index + 1
+          });
+          spectrumList.appendChild(a);
+        });
+      } else {
+        spectrumList.innerHTML = "";
+        uploadResult.innerHTML += `<div class="text-danger mt-2">Error: ${data.message}</div>`;
+      }
+    } catch (err) {
+      spectrumList.innerHTML = "";
+      uploadResult.innerHTML += `<div class="text-danger mt-2">Request failed: ${err.message}</div>`;
+    } finally {
+      toggleButtonStates(false);
+    }
+  });
+
+  uploadCustomDb.addEventListener("change", async () => {
+    if (uploadCustomDb.files.length === 0) {
+      customDbFileName.textContent = "";
+      if (pollingInterval) clearInterval(pollingInterval);
+      toggleButtonStates(false);
+      uploadResult.style.display = "none";
+      welcomeMessage.style.display = "block";
+      return;
+    }
+
+    const file = uploadCustomDb.files[0];
+    const fileSizeMB = file.size / (1024 * 1024);
+    const suffix = file.name.split('.').pop().toLowerCase();
+    if (!['mgf', 'msp', 'mat'].includes(suffix)) {
+      alert("Unsupported file format, only .mgf, .msp, .mat files are supported.");
+      customDbFileName.textContent = "";
+      uploadCustomDb.value = null;
+      uploadResult.style.display = "block";
+      welcomeMessage.style.display = "none";
+      uploadResult.innerHTML = `<strong>Upload failed:</strong><div class="mt-2 text-danger">Unsupported file format.</div>`;
+      toggleButtonStates(false);
+      return;
+    }
+    if (fileSizeMB > 1000) {
+      alert("File too large, maximum supported size is 1GB.");
+      customDbFileName.textContent = "";
+      uploadCustomDb.value = null;
+      uploadResult.style.display = "block";
+      welcomeMessage.style.display = "none";
+      uploadResult.innerHTML = `<strong>Upload failed:</strong><div class="mt-2 text-danger">File too large.</div>`;
+      toggleButtonStates(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      toggleButtonStates(true);
+      const res = await fetch(`http://deepmass.cn:8000/anal_search/upload-custom-db`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (res.status === 400 || data.status === "error") {
+        customDbFileName.textContent = ""; uploadCustomDb.value = null;
+        uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+        uploadResult.innerHTML = `<strong>Upload failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+        toggleButtonStates(false);
+        return;
+      }
+      if (data.status === "processing") {
+        startCustomDbPolling(file.name, fileSizeMB);
+      } else {
+        customDbFileName.textContent = ""; uploadCustomDb.value = null;
+        uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+        uploadResult.innerHTML = `<strong>Processing failed:</strong><div class="mt-2 text-danger">Unexpected response: ${data.message}</div>`;
+        toggleButtonStates(false);
+      }
+    } catch (err) {
+      customDbFileName.textContent = ""; uploadCustomDb.value = null;
+      uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+      uploadResult.innerHTML = `<strong>Upload failed:</strong><div class="mt-2 text-danger">Upload request failed: ${err.message}</div>`;
+      toggleButtonStates(false);
+    }
+  });
+
+  btnRun.addEventListener("click", async () => {
+    let threshold = parseFloat(thresholdInput.value);
+    if (isNaN(threshold) || threshold < 0 || threshold > 1) {
+      alert("Please enter a threshold between 0 and 1");
+      return;
+    }
+    if (!isTestFileSelected && !currentUploadFile && !currentUuidFilename) {
+      alert("Please upload a file or select the test file");
+      return;
+    }
+    if (dbCustom.checked) {
+      try {
+        const statusRes = await fetch(`http://deepmass.cn:8000/anal_search/custom-db-status`, { credentials: "include" });
+        const statusData = await statusRes.json();
+        if (statusData.status !== "success") {
+          alert("Custom database is not ready.");
+          return;
+        }
+      } catch (err) {
+        alert("Failed to check custom database status: " + err.message);
+        return;
+      }
+    }
+
+    if (!isTestFileSelected && currentUuidFilename && currentUploadFile) {
+      try {
+        const checkResponse = await fetch(`http://deepmass.cn:8000/anal_search/check-file?uuid_filename=${encodeURIComponent(currentUuidFilename)}`, { credentials: "include" });
+        const checkData = await checkResponse.json();
+        if (checkData.status !== "success") currentUuidFilename = null;
+      } catch { currentUuidFilename = null; }
+    }
+
+    toggleButtonStates(true);
+    const formData = new FormData();
+    formData.append("threshold", threshold);
+    formData.append("db_option", dbDefault.checked ? "Default" : "Custom");
+    if (isTestFileSelected) {
+      formData.append("source", "test");
+    } else if (currentUuidFilename) {
+      formData.append("uuid_filename", currentUuidFilename);
+      formData.append("source", "upload");
+    } else if (currentUploadFile) {
+      formData.append("file", currentUploadFile);
+      formData.append("source", "upload");
+    } else {
+      toggleButtonStates(false);
+      alert("Invalid state: No file or test file selected");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://deepmass.cn:8000/anal_search/run`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      const data = await response.json();
+      uploadResult.style.display = "block";
+      if (data.status === "success" && Array.isArray(data.result)) {
+        analysisResults = data.result;
+        stateUuid = data.state_uuid;
+        window.stateUuid = stateUuid;
+        targetZipFileName = data.target_zip_file_name;
+
+        resultsByQuery = groupResultsByQuery(analysisResults);
+        resultTbody.innerHTML = ""; resultThead.innerHTML = "";
+        if (Object.keys(resultsByQuery).length > 0) {
+          renderTopKForQuery(1);
+        } else {
+          topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates</td></tr>`;
+          renderInformationFromItem(null);
+          Plotly.purge("plotly-spectrum"); Plotly.purge("plotly-loss");
+          structureImg.style.display = "none";
+          plotlySpectrum.classList.remove("has-data");
+          plotlyLoss.classList.remove("has-data");
+          annotatedStructure.classList.remove("has-data");
+        }
+        uploadResult.innerHTML = `<strong>Run successful:</strong><div class="mt-2">${data.message}</div>`;
+        new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
+      } else {
+        analysisResults = []; stateUuid = null; targetZipFileName = null;
+        topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates</td></tr>`;
+        resultTbody.innerHTML = `<tr><td colspan="1" class="text-center">No results to display</td></tr>`;
+        resultThead.innerHTML = "";
+        uploadResult.innerHTML = `<strong>Run failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+        Plotly.purge("plotly-spectrum"); Plotly.purge("plotly-loss");
+        document.getElementById("structure-image").style.display = "none";
+        document.getElementById("plotly-spectrum").classList.remove("has-data");
+        document.getElementById("plotly-loss").classList.remove("has-data");
+        document.getElementById("annotated-structure").classList.remove("has-data");
+      }
+    } catch (err) {
+      analysisResults = []; stateUuid = null; targetZipFileName = null;
+      topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates</td></tr>`;
+      resultTbody.innerHTML = `<tr><td colspan="1" class="text-center">No results to display</td></tr>`;
+      resultThead.innerHTML = "";
+      uploadResult.style.display = "block";
+      uploadResult.innerHTML = `<strong>Request failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
+      Plotly.purge("plotly-spectrum"); Plotly.purge("plotly-loss");
+      document.getElementById("structure-image").style.display = "none";
+      document.getElementById("plotly-spectrum").classList.remove("has-data");
+      document.getElementById("plotly-loss").classList.remove("has-data");
+      document.getElementById("annotated-structure").classList.remove("has-data");
+    } finally {
+      toggleButtonStates(false);
+    }
+  });
+
+btnSave.addEventListener("click", async () => {
+  if (!analysisResults || analysisResults.length === 0 || !stateUuid || !targetZipFileName) {
+    alert("No results to save, please run analysis first");
+    return;
+  }
+  toggleButtonStates(true);
+
+  // === 读取当前阈值并传给后端 ===
+  let threshold = parseFloat(document.getElementById("thresholdInput").value);
+  if (isNaN(threshold)) threshold = 0.0;
+
+  const formData = new FormData();
+  formData.append("state_uuid", stateUuid);
+  formData.append("target_zip_file_name", targetZipFileName);
+  formData.append("threshold", threshold);   // ★ 传递阈值
+
+  try {
+    const res = await fetch(`http://deepmass.cn:8000/anal_search/save-results`, {
+      method: "POST",
+      body: formData,
+      credentials: "include"
+    });
+    const data = await res.json();
+    uploadResult.style.display = "block";
+    if (data.status === "success") {
+      // ★ 后端现在返回 xlsx
+      const xlsxFilename = data.file_path.split('/').pop();
+      uploadResult.innerHTML = `
+        <strong>Save successful!</strong>
+        <div class="mt-2">
+          <a href="http://deepmass.cn:8000/anal_search/download-result-file?file_path=${encodeURIComponent(data.file_path)}"
+             download="${xlsxFilename}" class="btn btn-primary btn-sm">
+            <i class="bi bi-download me-1"></i> Download result file
+          </a>
+        </div>`;
+    } else {
+      uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+    }
+  } catch (err) {
+    uploadResult.style.display = "block";
+    uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
+  } finally {
+    toggleButtonStates(false);
+  }
+});
+
+
+  btnClear.addEventListener("click", async () => {
+    toggleButtonStates(true);
+    try {
+      const res = await fetch(`http://deepmass.cn:8000/anal_search/clear`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+      uploadResult.style.display = "block";
+      if (data.status === "success") {
+        currentUploadFile = null; currentUuidFilename = null; isTestFileSelected = false;
+        analysisResults = []; stateUuid = null; targetZipFileName = null;
+        spectrumList.innerHTML = "";
+        topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates</td></tr>`;
+        resultTbody.innerHTML = `<tr><td colspan="1" class="text-center">No results to display</td></tr>`;
+        resultThead.innerHTML = "";
+        uploadResult.innerHTML = `<strong>Cleared successfully:</strong><div class="mt-2">${data.message}</div>`;
+        welcomeMessage.style.display = "block"; uploadResult.style.display = "none";
+        Plotly.purge("plotly-spectrum"); Plotly.purge("plotly-loss");
+        document.getElementById("structure-image").style.display = "none";
+        document.getElementById("plotly-spectrum").classList.remove("has-data");
+        document.getElementById("plotly-loss").classList.remove("has-data");
+        document.getElementById("annotated-structure").classList.remove("has-data");
+        customDbFileName.textContent = ""; uploadCustomDb.value = null;
+        if (pollingInterval) clearInterval(pollingInterval);
+      } else {
+        welcomeMessage.style.display = "none"; uploadResult.style.display = "block";
+        uploadResult.innerHTML = `<strong>Clear failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+      }
+    } catch (err) {
+      uploadResult.style.display = "block"; welcomeMessage.style.display = "none";
+      uploadResult.innerHTML = `<strong>Clear failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
+    } finally {
+      toggleButtonStates(false);
+    }
+  });
+
+  dbDefault.addEventListener("change", () => {
+    if (dbDefault.checked) {
+      customDbUpload.style.display = "none";
+      customDbFileName.textContent = "";
+      uploadCustomDb.value = null;
+      if (pollingInterval) clearInterval(pollingInterval);
+      toggleButtonStates(false);
+    }
+  });
+
+  dbCustom.addEventListener("change", () => {
+    if (dbCustom.checked) {
+      customDbUpload.style.display = "block";
+      btnRun.disabled = !customDbFileName.textContent.includes("Processed successfully");
+    }
+  });
+
+  async function displayCandidateDetail(item) {
+    let spec = item.spectrum_plot;
+    let loss = item.spectrum_loss_plot;
+    let structImg = item.ref_structure_plot;
+
+    if (!spec || !loss || !structImg) {
+      const res = await fetch(
+        `http://deepmass.cn:8000/anal_search/get-candidate-plots?state_uuid=${encodeURIComponent(window.stateUuid)}&query_index=${item.query_index}&rank=${item.rank}`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+      if (data.status !== "success") {
+        console.error("get-candidate-plots failed:", data);
+        return;
+      }
+      spec = data.spectrum_plot;
+      loss = data.spectrum_loss_plot;
+      structImg = data.ref_structure_plot;
+
+      // 回写到 item，后续点击更快；同步分数/索引以防后端补充
+      item.spectrum_plot = spec;
+      item.spectrum_loss_plot = loss;
+      item.ref_structure_plot = structImg;
+      if (data.StructSimScore !== undefined) item.StructSimScore = data.StructSimScore;
+      if (data.database_index !== undefined) item.database_index = data.database_index;
+
+      // 信息表刷新一次，保证显示的是最新值
+      renderInformationFromItem(item);
+    }
+
+    const spectrumPlot = spec ? JSON.parse(spec) : null;
+    const spectrumLossPlot = loss ? JSON.parse(loss) : null;
+
+    if (spectrumPlot) {
+      Plotly.newPlot("plotly-spectrum", spectrumPlot.data, {
+        ...spectrumPlot.layout,
+        width: plotlySpectrum.offsetWidth,
+        height: plotlySpectrum.offsetHeight
+      }, { responsive: true });
+      plotlySpectrum.classList.add("has-data");
+    } else { Plotly.purge("plotly-spectrum"); plotlySpectrum.classList.remove("has-data"); }
+
+    if (spectrumLossPlot) {
+      Plotly.newPlot("plotly-loss", spectrumLossPlot.data, {
+        ...spectrumLossPlot.layout,
+        width: plotlyLoss.offsetWidth,
+        height: plotlyLoss.offsetHeight
+      }, { responsive: true });
+      plotlyLoss.classList.add("has-data");
+    } else { Plotly.purge("plotly-loss"); plotlyLoss.classList.remove("has-data"); }
+
+    if (structImg) {
+      structureImg.src = structImg;
+      structureImg.style.display = "block";
+      annotatedStructure.classList.add("has-data");
+    } else {
+      structureImg.style.display = "none";
+      annotatedStructure.classList.remove("has-data");
+    }
+
+    new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
+  }
+</script>
+
+</body>
+</html>
