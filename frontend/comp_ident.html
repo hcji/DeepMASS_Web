@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compound Identification</title>
+
+  <link href="libs/bootstrap-5.3.0.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="libs/bootstrap-icons-1.13.1.css">
+  <script src="libs/bootstrap-5.3.0.bundle.min.js"></script>
+  <script src="libs/plotly-2.24.1.min.js"></script>
+  <link rel="stylesheet" href="deepmass.css" />
+
+  <style>
+    .left-panel  { border-right: 1px solid #e5e7eb; background:#fff; }
+    .right-panel { background:#fff; }
+    .table-hover tbody tr { cursor:pointer; }
+    .table thead th { position: sticky; top: 0; z-index: 1; background:#f1f3f5; }
+    .plot-placeholder {
+      position: relative; display:flex; align-items:center; justify-content:center;
+      border: 1px solid #dee2e6; border-radius:8px; background:#ffffff; height:100%;
+    }
+    .plot-placeholder .label-text { position:absolute; top:10px; left:10px; color:#333; font-weight:600; }
+    .plot-placeholder .bi { display:inline-block; }
+    .plot-placeholder.has-data .bi { display:none !important; }
+    #annotated-structure, #reference-structure { overflow:hidden; position:relative; }
+    #annotated-structure img, #reference-structure img {
+      max-width:80%; max-height:80%; object-fit:contain; position:absolute; top:50%; left:50%;
+      transform:translate(-50%, -50%);
+    }
+    .table-responsive { max-height: 300px; border:1px solid #dee2e6; border-radius:8px; background:#fff; }
+    .table td, .table th { vertical-align: middle; }
+
+    /* 左对齐 + 固定布局 */
+    .table th, .table td { text-align: left !important; }
+    .table-fixed { table-layout: fixed; }
+
+    /* 表体：固定布局，具体省略由 .cell-clip 控制 */
+    .table-fixed tbody td { overflow: hidden; }
+
+    /* 表头完整显示 */
+    .table-fixed thead th { white-space: nowrap; overflow: visible; text-overflow: clip; }
+
+    /* —— 单行省略 + 悬浮提示 —— */
+    .cell-clip{
+      display:block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: default;
+      padding-right: 2px;
+    }
+    .cell-tooltip{
+      position: fixed;
+      max-width: 520px;
+      background: rgba(20,20,20,0.96);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      z-index: 2000;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25);
+      white-space: normal;
+      word-break: break-word;
+      pointer-events: none;
+      display: none;
+    }
+    .cell-tooltip::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%);
+      bottom:-6px;
+      border-width:6px 6px 0 6px;
+      border-style:solid;
+      border-color: rgba(20,20,20,0.96) transparent transparent transparent;
+    }
+
+    @media (max-width: 768px) {
+      .table td, .table th { font-size:12px; padding:8px 12px; }
+      .plot-placeholder .label-text { font-size:12px; top:6px; left:6px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top custom-navbar text-white py-2 px-3">
+  <div class="navbar-header d-inline-block">
+    <a class="navbar-brand text-white fw-bold" data-no-turbolink="true" href="http://deepmass.cn/comp_ident/" style="font-size: 28px;">DeepMass</a>
+  </div>
+  <div class="d-inline-block ms-4" id="main-nav">
+    <ul class="nav">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle text-white" href="#" id="linkDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Link</a>
+        <ul class="dropdown-menu" aria-labelledby="linkDropdown">
+          <li><a class="dropdown-item" href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm">Links to Papers</a></li>
+          <li><a class="dropdown-item" href="https://www.agis.org.cn/kydw/kydwyjzx/zxjsyjzx/00358335c1a44a9f83fd7918cfc225ec.htm">Research Groups</a></li>
+          <li><a class="dropdown-item" href="https://github.com/hcji/DeepMASS2_GUI/invitations">GitHub</a></li>
+        </ul>
+      </li>
+      <li class="nav-item dropdown ms-3">
+        <a class="nav-link dropdown-toggle text-white" href="#" id="aboutDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">About</a>
+        <ul class="dropdown-menu" aria-labelledby="aboutDropdown">
+          <li><a class="dropdown-item" href="handbooks.html">Handbook</a></li>
+          <li><a class="dropdown-item" href="introduce.html">Product Introduction</a></li>
+        </ul>
+      </li>
+      <li class="nav-item ms-3"><a class="nav-link text-white" data-no-turbolink="true" href="contactus.html">Contact Us</a></li>
+      <li class="nav-item ms-3"><a class="nav-link text-white" data-no-turbolink="true" href="register.html">Register</a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="container-fluid" style="height: calc(100vh - 56px);">
+  <div class="row h-100">
+    <div id="sidebar" class="col-2 left-panel">
+      <div class="spectrum-container mt-0">
+        <div class="spectrum-header d-flex align-items-center px-3 py-2 border-bottom">
+          <i class="bi bi-card-list me-2 text-dark"></i>
+          <h6 class="mb-0" title="Compound Name">Cmpd Name</h6>
+        </div>
+        <div class="list-group" id="spectrum-list" style="max-height: calc(100vh - 50px); overflow-y: auto;"></div>
+      </div>
+    </div>
+
+    <div id="main-content" class="col-10 right-panel">
+      <div class="row mb-3">
+        <div class="col d-flex justify-content-start align-items-center flex-wrap gap-2">
+          <input type="file" id="uploadFile" accept=".mgf,.msp,.mat" style="display:none" />
+          <button class="btn btn-md shadow-sm" id="btnUploadFile" style="background-color:#409eff;color:#fff;border-color:#409eff;">
+            <i class="bi bi-upload me-1"></i> Upload File
+          </button>
+          <button class="btn btn-secondary btn-md shadow-sm" id="btnTestFile">
+            <i class="bi bi-file-earmark-text me-1"></i> Test File
+          </button>
+          <button class="btn btn-warning btn-md shadow-sm" id="btnRun">
+            <i class="bi bi-play-circle me-1"></i> Run DeepMASS
+          </button>
+          <button class="btn btn-success btn-md shadow-sm text-white" id="btnSave">
+            <i class="bi bi-save me-1"></i> Save Results
+          </button>
+        </div>
+        <div class="col-auto d-flex justify-content-end align-items-center">
+          <button type="button" class="btn btn-danger" id="btnClear">
+            <i class="bi bi-trash me-1"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- 顶部旧进度条保留但不使用（隐藏即可） -->
+      <div class="row mb-2" style="display:none;">
+        <div class="col">
+          <div id="runProgress" class="progress" style="height:20px; display:none;">
+            <div id="runProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%">0%</div>
+          </div>
+          <div id="runStatus" class="small text-muted mt-1" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div id="welcomeMessage" class="border p-3 mb-3" style="background:#f8f9fa;">
+        <strong>Welcome to Compound Identification</strong>
+        <div class="mt-2 text-muted">Please upload a file or click <strong>Test File</strong> to get started.</div>
+      </div>
+
+      <!-- 运行状态/上传结果卡片（进度条会渲染在这里） -->
+      <div id="uploadResult" class="border p-3 mb-3" style="display:none; background:#f8f9fa;"></div>
+
+      <div class="mt-4">
+        <h6 class="fw-bold">Formula Finder</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered table-sm table-hover mb-0 table-fixed">
+            <colgroup><col><col><col></colgroup>
+            <thead class="table-light"><tr><th>Formula</th><th>mass</th><th>error (mDa)</th></tr></thead>
+            <tbody id="formula-finder-table"></tbody>
+          </table>
+        </div>
+
+        <h6 class="fw-bold">Structure Finder</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered table-sm table-hover mb-0 table-fixed" id="structure-table">
+            <colgroup id="structure-colgroup"></colgroup>
+            <thead class="table-light"><tr id="structure-head"></tr></thead>
+            <tbody id="structure-finder-table"></tbody>
+          </table>
+        </div>
+
+        <h6 class="fw-bold">Reference Spectrums</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered table-sm table-hover mb-0 table-fixed" id="reference-table">
+            <colgroup id="reference-colgroup"></colgroup>
+            <thead class="table-light"><tr id="reference-head"></tr></thead>
+            <tbody id="reference-spectrums-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <ul class="nav nav-tabs" id="tabMenu" role="tablist">
+        <li class="nav-item"><a class="nav-link active" id="tab-spectrum" data-bs-toggle="tab" href="#spectrum" role="tab" aria-controls="spectrum" aria-selected="true">Spectrum</a></li>
+        <li class="nav-item"><a class="nav-link" id="tab-structure" data-bs-toggle="tab" href="#structure" role="tab" aria-controls="structure" aria-selected="false">Structure</a></li>
+        <li class="nav-item"><a class="nav-link" id="tab-result" data-bs-toggle="tab" href="#result" role="tab" aria-controls="result" aria-selected="false">Information</a></li>
+      </ul>
+
+      <div class="tab-content flex-grow-1 overflow-auto" id="tabContent" style="min-height: 380px;">
+        <div class="tab-pane fade show active" id="spectrum" role="tabpanel" aria-labelledby="tab-spectrum">
+          <div class="d-flex gap-3" id="plot-row" style="width: 100%; height: 300px; margin-top: 10px;">
+            <div id="plotly-spectrum" class="plot-placeholder flex-grow-1">
+              <i class="bi bi-graph-up me-2 text-dark"></i><div class="label-text">Spectrum</div>
+            </div>
+            <div id="plotly-loss" class="plot-placeholder flex-grow-1">
+              <i class="bi bi-graph-up me-2 text-dark"></i><div class="label-text">Loss</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="structure" role="tabpanel" aria-labelledby="tab-structure">
+          <div class="d-flex align-items-center justify-content-end gap-3 mt-2">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="toggleHighlight" checked>
+              <label class="form-check-label" for="toggleHighlight">Highlight</label>
+            </div>
+          </div>
+
+          <div class="d-flex gap-3" style="width: 100%; height: 300px; margin-top: 10px;">
+            <div id="annotated-structure" class="plot-placeholder flex-grow-1">
+              <i class="bi bi-activity me-2 text-dark"></i><div class="label-text">Annotated Structure</div>
+              <img id="img-anno" style="display:none;" />
+            </div>
+            <div id="reference-structure" class="plot-placeholder flex-grow-1">
+              <i class="bi bi-activity me-2 text-dark"></i><div class="label-text">Reference Structure</div>
+              <img id="img-ref" style="display:none;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="result" role="tabpanel" aria-labelledby="tab-result">
+          <div id="result-table" class="table-responsive overflow-auto" style="width: 100%; height: 300px; margin-top: 10px;">
+            <table class="table table-bordered table-sm table-hover mb-0 table-fixed">
+              <colgroup><col><col></colgroup>
+              <thead class="thead-light"><tr><th>key</th><th>value</th></tr></thead>
+              <tbody id="result-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:360px;margin:10px auto 10px auto;text-align:center;white-space: nowrap;">
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002088" target="_blank" style="text-decoration:none;" rel="noreferrer">
+          <img src="icon/beian.png" style="width:13px;height:13px;vertical-align:middle;">
+          <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘公网安备43010402002088号</span>
+        </a>
+        <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" style="text-decoration:none;margin-left:8px;" rel="noreferrer">
+          <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘ICP备2025102844号-1</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 全局：单元格悬浮提示框 -->
+<div id="cellTooltip" class="cell-tooltip"></div>
+
+<script>
+  const uploadInput    = document.getElementById("uploadFile");
+  const btnUploadFile  = document.getElementById("btnUploadFile");
+  const btnTestFile    = document.getElementById("btnTestFile");
+  const btnRun         = document.getElementById("btnRun");
+  const btnSave        = document.getElementById("btnSave");
+  const btnClear       = document.getElementById("btnClear");
+
+  const uploadResult   = document.getElementById("uploadResult");
+  const spectrumList   = document.getElementById("spectrum-list");
+  const welcomeMessage = document.getElementById("welcomeMessage");
+
+  const formulaTbody   = document.getElementById("formula-finder-table");
+  const structTbody    = document.getElementById("structure-finder-table");
+  const refTbody       = document.getElementById("reference-spectrums-table");
+
+  const structHeadRow  = document.getElementById("structure-head");
+  const structColgroup = document.getElementById("structure-colgroup");
+
+  const refHeadRow     = document.getElementById("reference-head");
+  const refColgroup    = document.getElementById("reference-colgroup");
+
+  const plotSpectrumDiv= document.getElementById("plotly-spectrum");
+  const plotLossDiv    = document.getElementById("plotly-loss");
+  const imgAnno        = document.getElementById("img-anno");
+  const imgRef         = document.getElementById("img-ref");
+
+  const infoTbody      = document.getElementById("result-tbody");
+
+  // Highlight 开关（在 Structure 页）
+  let toggleHighlightEl;
+  let highlightEnabled = true;
+
+  function showSpectrumTab() {
+    const tabEl = document.querySelector('#tab-spectrum');
+    if (tabEl) new bootstrap.Tab(tabEl).show();
+  }
+
+  let currentSpecIdx = null;
+  let currentFormulaIdx = 0;
+  let currentStructureIdx = 0;
+  let currentStructureSmiles = null;
+  let progressTimer = null;
+
+  // ====== 默认表头（运行前就显示） ======
+  const DEFAULT_STRUCT_COLS = ["Title","MolecularFormula","CanonicalSMILES","InChIKey","DeepMass Score"];
+  const DEFAULT_REF_COLS    = ["name","adduct","smiles","parent_mass","database"];
+
+  // ============ 工具函数 ============
+  function esc(v) {
+    if (v === null || v === undefined) return "";
+    return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  const STRUCT_PREFERRED_ORDER = [
+    "Title","MolecularFormula","Molecular Formula","CanonicalSMILES","SMILES","InChIKey","DeepMass Score","DeepMassScore"
+  ];
+  const REF_PREFERRED_ORDER = ["name","adduct","smiles","parent_mass","database"];
+
+  function pickColumns(rows, preferredOrder, fallbackCols=[]) {
+    const seen = new Set();
+    const allKeys = [];
+    (rows || []).forEach(r => {
+      Object.keys(r || {}).forEach(k => { if (!seen.has(k)) { seen.add(k); allKeys.push(k); } });
+    });
+    if (!allKeys.length && fallbackCols.length) return [...fallbackCols];
+    const prefer = (preferredOrder || []).filter(k => seen.has(k));
+    const rest   = allKeys.filter(k => !(preferredOrder || []).includes(k));
+    return [...prefer, ...rest];
+  }
+
+  // 单元格：显示单行省略，悬浮看全文
+  function cellHTML(value) {
+    const full = (value === undefined || value === null) ? "" : String(value);
+    const display = full.replace(/[\r\n]+/g, " ");
+    return `<div class="cell-clip" data-full="${esc(full)}">${esc(display)}</div>`;
+  }
+
+  // 表渲染
+  function renderStructureTable(rows) {
+    const cols = pickColumns(rows, STRUCT_PREFERRED_ORDER, DEFAULT_STRUCT_COLS);
+    structHeadRow.innerHTML  = cols.map(c => `<th>${esc(c)}</th>`).join("");
+    structColgroup.innerHTML = cols.map(() => "<col>").join("");
+    if (!rows || !rows.length) { structTbody.innerHTML = ""; return; }
+    const smilesField = cols.find(c => /smiles/i.test(c)) || null;
+    structTbody.innerHTML = rows.map((r,i) => {
+      const smiles = smilesField ? esc(r[smilesField]) : "";
+      const tds = cols.map(c => `<td>${cellHTML(r[c])}</td>`).join("");
+      return `<tr data-index="${i}" ${smiles ? `data-smiles="${smiles}"` : ""}>${tds}</tr>`;
+    }).join("");
+  }
+
+  function renderReferenceTable(rows) {
+    const cols = pickColumns(rows, REF_PREFERRED_ORDER, DEFAULT_REF_COLS);
+    refHeadRow.innerHTML  = cols.map(c => `<th>${esc(c)}</th>`).join("");
+    refColgroup.innerHTML = cols.map(() => "<col>").join("");
+    if (!rows || !rows.length) { refTbody.innerHTML = ""; return; }
+    refTbody.innerHTML = rows.map((r,i) => {
+      const tds = cols.map(c => `<td>${cellHTML(r[c])}</td>`).join("");
+      return `<tr data-index="${i}">${tds}</tr>`;
+    }).join("");
+  }
+
+  function renderInfoTable(rows) {
+    infoTbody.innerHTML = rows.length
+      ? rows.map(r=>`<tr><td>${cellHTML(r.key ?? "")}</td><td>${cellHTML(r.value ?? "")}</td></tr>`).join('')
+      : `<tr><td colspan="2" class="text-center">No information</td></tr>`;
+  }
+  function renderFormulaTable(rows) {
+    formulaTbody.innerHTML = rows.length
+      ? rows.map((r,i)=>`<tr data-index="${i}">
+           <td>${cellHTML(r["Formula"]??"")}</td>
+           <td>${cellHTML(r["mass"]??"")}</td>
+           <td>${cellHTML(r["error (mDa)"]??"")}</td>
+         </tr>`).join('')
+      : `<tr><td colspan="3" class="text-center">No formulas</td></tr>`;
+  }
+
+  // —— 悬浮提示 —— //
+  const cellTooltip = document.getElementById('cellTooltip');
+  function showCellTooltip(targetEl) {
+    const full = targetEl.getAttribute('data-full') || '';
+    if (!full) return hideCellTooltip();
+    cellTooltip.textContent = full;
+    cellTooltip.style.display = 'block';
+    requestAnimationFrame(() => {
+      const rect = targetEl.getBoundingClientRect();
+      const tipRect = cellTooltip.getBoundingClientRect();
+      const gap = 8;
+      let top = rect.top - tipRect.height - gap;
+      let left = rect.left + rect.width / 2 - tipRect.width / 2;
+      if (top < 8) top = rect.bottom + gap;
+      const vw = document.documentElement.clientWidth;
+      const maxLeft = vw - tipRect.width - 8;
+      if (left < 8) left = 8;
+      if (left > maxLeft) left = maxLeft;
+      cellTooltip.style.top = `${Math.round(top)}px`;
+      cellTooltip.style.left = `${Math.round(left)}px`;
+    });
+  }
+  function hideCellTooltip() { cellTooltip.style.display = 'none'; }
+  document.addEventListener('mouseover', (e) => {
+    const clip = e.target.closest('.cell-clip'); if (!clip) return; showCellTooltip(clip);
+  });
+  document.addEventListener('mouseout', (e) => {
+    const clip = e.target.closest('.cell-clip'); if (!clip) return; hideCellTooltip();
+  });
+  ['scroll','resize'].forEach(evt => window.addEventListener(evt, hideCellTooltip, {passive:true}));
+
+  // ====== 进度条放入 uploadResult（新的 UI） ======
+  function ensureRunCard() {
+    welcomeMessage.style.display = "none";
+    uploadResult.style.display = "block";
+    if (!document.getElementById('runProgressCard')) {
+      uploadResult.innerHTML = `
+        <strong id="runTitle">Running DeepMASS…</strong>
+        <div class="mt-1 small text-muted" id="runSub">Initializing…</div>
+        <div class="progress mt-2" id="runProgressCard" style="height:20px;">
+          <div id="runProgressBarCard"
+               class="progress-bar progress-bar-striped progress-bar-animated"
+               role="progressbar" style="width:0%">0%</div>
+        </div>`;
+    }
+  }
+  function updateRunCard(total, done, status) {
+    const title = document.getElementById('runTitle');
+    const sub   = document.getElementById('runSub');
+    const bar   = document.getElementById('runProgressBarCard');
+    if (!title || !sub || !bar) return;
+    bar.classList.remove('bg-danger');
+
+    if (status === 'running') {
+      title.textContent = 'Running DeepMASS…';
+      if (total > 0) {
+        const pct = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
+        bar.style.width = pct + '%';
+        bar.textContent = pct + '%';
+        sub.textContent = `Processing ${done}/${total}`;
+      } else {
+        bar.style.width = '100%';
+        bar.textContent = 'Starting…';
+        sub.textContent = 'Initializing…';
+      }
+      return;
+    }
+    if (status === 'finished') {
+      title.textContent = 'Completed';
+      bar.style.width = '100%';
+      bar.textContent = '100%';
+      sub.textContent = 'All spectrums processed.';
+      return;
+    }
+    if (status === 'error') {
+      title.textContent = 'Run Failed';
+      bar.classList.add('bg-danger');
+      bar.style.width = '100%';
+      bar.textContent = 'Error';
+      sub.textContent = 'Please check backend logs.';
+      return;
+    }
+    title.textContent = 'Ready';
+    bar.style.width = '0%';
+    bar.textContent = '0%';
+    sub.textContent = 'Idle.';
+  }
+
+  function startProgressPoll() {
+    stopProgressPoll();
+    ensureRunCard();
+    updateRunCard(0, 0, 'running');
+    progressTimer = setInterval(async () => {
+      try {
+        const res = await fetch('http://deepmass.cn:8000/compound_identification/progress', {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        const d   = await res.json();
+        updateRunCard(d.total ?? 0, d.done ?? 0, d.status ?? 'success');
+        if (d.status === 'finished' || d.status === 'error') stopProgressPoll();
+      } catch {
+        stopProgressPoll();
+        updateRunCard(0, 0, 'error');
+      }
+    }, 500);
+  }
+  function stopProgressPoll() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+  }
+
+  // 常用 UI
+  function toggleButtons(disabled) {
+    [btnUploadFile,btnTestFile,btnRun,btnSave,btnClear].forEach(b=>b.disabled=disabled);
+    btnUploadFile.innerHTML = disabled ? `<i class="bi bi-upload me-1"></i> Upload File (Processing…)` : `<i class="bi bi-upload me-1"></i> Upload File`;
+    btnTestFile.innerHTML   = disabled ? `<i class="bi bi-file-earmark-text me-1"></i> Test File (Processing…)` : `<i class="bi bi-file-earmark-text me-1"></i> Test File`;
+    btnRun.innerHTML        = disabled ? `<i class="bi bi-hourglass-split me-1"></i> Running…` : `<i class="bi bi-play-circle me-1"></i> Run DeepMASS`;
+    btnSave.innerHTML       = disabled ? `<i class="bi bi-save me-1"></i> Save (Processing…)` : `<i class="bi bi-save me-1"></i> Save Results`;
+  }
+  function setImg(el, dataUrl) {
+    if (dataUrl) { el.src = dataUrl; el.style.display = "block"; el.parentElement.classList.add('has-data'); }
+    else { el.style.display = "none"; el.removeAttribute("src"); el.parentElement.classList.remove('has-data'); }
+  }
+  function highlightRow(tbodySelector, idx) {
+    document.querySelectorAll(`${tbodySelector} tr`).forEach(x=>x.classList.remove('table-active'));
+    const tr = document.querySelector(`${tbodySelector} tr[data-index="${idx}"]`); if (tr) tr.classList.add('table-active');
+  }
+
+  async function ensureSession() {
+    try {
+      await fetch('http://deepmass.cn:8000/compound_identification/start-session', {credentials:'include', cache:'no-store'});
+    } catch(e) {}
+  }
+
+  function renderList(names) {
+    spectrumList.innerHTML = "";
+    (Object.values(names?.title || {})).forEach((name, idx) => {
+      const a = document.createElement("a");
+      a.href = "#";
+      a.className = "list-group-item list-group-item-action";
+      a.dataset.index = idx;
+      a.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${esc(name)}`;
+      a.addEventListener("click", (e)=>{ e.preventDefault(); onSpectrumClick(idx); });
+      spectrumList.appendChild(a);
+    });
+  }
+
+  // ====== Plotly 同尺寸 ======
+  const BASE_MARGIN = { l: 50, r: 20, t: 20, b: 40 };
+  const BASE_CONFIG = { responsive: false, displayModeBar: false, scrollZoom: false };
+  const PLOTS = new Set();
+  function parseFigure(figLike){ if(!figLike) return null; if(typeof figLike==='string'){try{return JSON.parse(figLike);}catch{return null;}} if(typeof figLike==='object') return figLike; return null; }
+  function isVisible(el){ if(!el) return false; const rect=el.getBoundingClientRect(); return rect.width>0 && rect.height>0 && getComputedStyle(el).display!=='none'; }
+  function computePlotSize(){
+    const row = document.getElementById('plot-row'); if (!row) return { w:0, h:0 };
+    const cs = getComputedStyle(row); const gap = parseFloat(cs.columnGap||cs.gap||'16')||16;
+    const w = row.clientWidth; const h=row.clientHeight; return { w: Math.max(0, Math.floor((w-gap)/2)), h: Math.max(0,h) };
+  }
+  function showPlotlySameSize(div, figLike, tryCount=0){
+    const fig = parseFigure(figLike); if(!fig){ Plotly.purge(div); div.classList.remove('has-data'); return; }
+    const row = document.getElementById('plot-row');
+    if(!isVisible(div) || !isVisible(row)){ if(tryCount<12) return setTimeout(()=>showPlotlySameSize(div, fig, tryCount+1), 80); }
+    const {w,h} = computePlotSize(); if((!w||!h) && tryCount<12) return setTimeout(()=>showPlotlySameSize(div, fig, tryCount+1), 80);
+    const layout = { ...(fig.layout||{}), margin:{...BASE_MARGIN}, autosize:false, width: w||div.offsetWidth||400, height: h||div.offsetHeight||300 };
+    Plotly.react(div, fig.data||[], layout, BASE_CONFIG)
+      .then(()=>{ div.classList.add('has-data'); PLOTS.add(div); })
+      .catch(err=>{ console.error('Plotly render error:', err); Plotly.purge(div); div.classList.remove('has-data'); });
+  }
+  function relayoutAllPlotsSameSize(){ const {w,h}=computePlotSize(); if(!w||!h) return; PLOTS.forEach(div=>{ if(div?.isConnected && div.classList.contains('has-data')) Plotly.relayout(div,{width:w,height:h}); }); }
+  (()=>{ const row=document.getElementById('plot-row'); if(!row) return; const ro=new ResizeObserver(()=>relayoutAllPlotsSameSize()); ro.observe(row); })();
+  window.addEventListener('resize', relayoutAllPlotsSameSize);
+
+  // ====== Highlight 开关事件 ======
+  function bindHighlightSwitch() {
+    toggleHighlightEl = document.getElementById('toggleHighlight');
+    if (!toggleHighlightEl) return;
+    highlightEnabled = !!toggleHighlightEl.checked;
+    toggleHighlightEl.addEventListener('change', () => {
+      highlightEnabled = !!toggleHighlightEl.checked;
+      if (currentSpecIdx !== null) {
+        const activeRef = document.querySelector('#reference-spectrums-table tr.table-active');
+        const refIdx = activeRef ? parseInt(activeRef.dataset.index) : 0;
+        fetchPlots(isNaN(refIdx) ? 0 : refIdx);
+      }
+    }, { once:false });
+  }
+
+  // ====== 级联 ======
+  async function onSpectrumClick(idx) {
+    currentSpecIdx = idx; currentFormulaIdx = 0; currentStructureIdx = 0; currentStructureSmiles = null;
+    const res = await fetch(`http://deepmass.cn:8000/compound_identification/select-spectrum?idx=${idx}`, {credentials:'include', cache:'no-store'});
+    const data = await res.json();
+    if (data.status !== 'success') { alert(data.message||'Error'); return; }
+    renderInfoTable(data.information_table || []);
+    const frows = data.formula_table || [];
+    renderFormulaTable(frows);
+    highlightRow('#formula-finder-table', 0);
+
+    if (data.need_run) {
+      renderStructureTable([]); renderReferenceTable([]);
+      setImg(imgAnno, null); setImg(imgRef, null);
+      Plotly.purge(plotSpectrumDiv); plotSpectrumDiv.classList.remove('has-data');
+      Plotly.purge(plotLossDiv);     plotLossDiv.classList.remove('has-data');
+      bindFormulaClicks(); showSpectrumTab(); return;
+    }
+
+    await loadStructuresAndRefs(0);
+    bindFormulaClicks();
+    showSpectrumTab();
+  }
+
+  async function loadStructuresAndRefs(formulaIdx) {
+    currentFormulaIdx = formulaIdx;
+    const res = await fetch(`http://deepmass.cn:8000/compound_identification/structures?spec_idx=${currentSpecIdx}&formula_idx=${currentFormulaIdx}`, {credentials:'include', cache:'no-store'});
+    const data = await res.json();
+
+    if (data.status !== 'success') {
+      renderStructureTable([]); renderReferenceTable([]);
+      setImg(imgAnno, null); setImg(imgRef, null);
+      Plotly.purge(plotSpectrumDiv); plotSpectrumDiv.classList.remove('has-data');
+      Plotly.purge(plotLossDiv);     plotLossDiv.classList.remove('has-data');
+      return;
+    }
+
+    const srows = data.structure_table || [];
+    renderStructureTable(srows);
+
+    currentStructureIdx = 0;
+    const firstRow = document.querySelector('#structure-finder-table tr[data-index="0"]');
+    currentStructureSmiles = firstRow?.getAttribute('data-smiles') || null;
+    if (firstRow) highlightRow('#structure-finder-table', 0);
+
+    const rrows = data.reference_table || [];
+    renderReferenceTable(rrows);
+
+    setImg(imgAnno, null); setImg(imgRef,  null);
+    if (rrows.length) {
+      highlightRow('#reference-spectrums-table', 0);
+      await fetchPlots(0);
+    } else {
+      Plotly.purge(plotSpectrumDiv); plotSpectrumDiv.classList.remove('has-data');
+      Plotly.purge(plotLossDiv);     plotLossDiv.classList.remove('has-data');
+    }
+
+    bindStructureClicks(); bindReferenceClicks();
+  }
+
+  async function onStructureClick(structIdx) {
+    currentStructureIdx = structIdx;
+    const tr = document.querySelector(`#structure-finder-table tr[data-index="${structIdx}"]`);
+    currentStructureSmiles = tr?.getAttribute('data-smiles') || null;
+
+    const res = await fetch(`http://deepmass.cn:8000/compound_identification/reference-table?spec_idx=${currentSpecIdx}&structure_idx=${currentStructureIdx}`, {credentials:'include', cache:'no-store'});
+    const d2 = await res.json();
+    if (d2.status !== 'success') {
+      renderReferenceTable([]);
+      setImg(imgAnno, null); setImg(imgRef, null);
+      Plotly.purge(plotSpectrumDiv); plotSpectrumDiv.classList.remove('has-data');
+      Plotly.purge(plotLossDiv);     plotLossDiv.classList.remove('has-data');
+      return;
+    }
+
+    const rrows = d2.reference_table || [];
+    renderReferenceTable(rrows);
+    setImg(imgAnno, null); setImg(imgRef,  null);
+    if (rrows.length) {
+      highlightRow('#reference-spectrums-table', 0);
+      await fetchPlots(0);
+    } else {
+      Plotly.purge(plotSpectrumDiv); plotSpectrumDiv.classList.remove('has-data');
+      Plotly.purge(plotLossDiv);     plotLossDiv.classList.remove('has-data');
+    }
+    bindReferenceClicks();
+  }
+
+  async function onReferenceClick(refIdx) { await fetchPlots(refIdx); }
+
+  async function fetchPlots(refIdx) {
+    const qs = new URLSearchParams({
+      spec_idx: String(currentSpecIdx),
+      ref_idx: String(refIdx),
+      structure_smiles: currentStructureSmiles || '',
+      highlight: highlightEnabled ? 'true' : 'false'
+    }).toString();
+    const res = await fetch(`http://deepmass.cn:8000/compound_identification/reference-select?${qs}`, {credentials:'include', cache:'no-store'});
+    const data = await res.json();
+    if (data.status !== 'success') { return; }
+    showPlotlySameSize(plotSpectrumDiv, data.spectrum_plot || null);
+    showPlotlySameSize(plotLossDiv,     data.spectrum_loss_plot || null);
+    setImg(imgAnno, data.ann_img || null);
+    setImg(imgRef,  data.ref_img || null);
+  }
+
+  function bindFormulaClicks() {
+    document.querySelectorAll('#formula-finder-table tr').forEach(tr=>{
+      tr.addEventListener('click', async ()=>{
+        const idx = parseInt(tr.dataset.index) || 0;
+        highlightRow('#formula-finder-table', idx);
+        await loadStructuresAndRefs(idx);
+      });
+    });
+  }
+  function bindStructureClicks() {
+    document.querySelectorAll('#structure-finder-table tr').forEach(tr=>{
+      tr.addEventListener('click', async ()=>{
+        const idx = parseInt(tr.dataset.index) || 0;
+        highlightRow('#structure-finder-table', idx);
+        await onStructureClick(idx);
+      });
+    });
+  }
+  function bindReferenceClicks() {
+    document.querySelectorAll('#reference-spectrums-table tr').forEach(tr=>{
+      tr.addEventListener('click', async ()=>{
+        const idx = parseInt(tr.dataset.index) || 0;
+        highlightRow('#reference-spectrums-table', idx);
+        await onReferenceClick(idx);
+      });
+    });
+  }
+
+  // 切换到 Structure 页时绑定开关
+  document.querySelectorAll('#tabMenu a[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', (e) => {
+      if (e.target.id === 'tab-structure') bindHighlightSwitch();
+      relayoutAllPlotsSameSize();
+    });
+  });
+
+  // ====== 顶部按钮 & 初始化 ======
+  btnUploadFile.addEventListener('click', ()=>{ uploadInput.value = null; uploadInput.click(); });
+
+  uploadInput.addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files||[]); if (!files.length) return;
+    toggleButtons(true);
+    welcomeMessage.style.display = "none"; uploadResult.style.display = "block";
+    const fd = new FormData(); files.forEach(f=> fd.append('files', f));
+    try {
+      const res = await fetch('http://deepmass.cn:8000/compound_identification/upload', {
+        method:'POST', body:fd, credentials:'include'
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        uploadResult.innerHTML = `<strong>${esc(data.message || 'Upload Successful!')}</strong>
+          <div class="mt-2">The uploaded file is: ${files.map(f=>esc(f.name)).join(', ')}</div>`;
+        await refreshList();
+        const first = document.querySelector('#spectrum-list a.list-group-item'); if (first) { first.click(); showSpectrumTab(); }
+      } else {
+        uploadResult.innerHTML = `<div class="text-danger">Upload failed: ${esc(data.message || 'Error')}</div>`;
+      }
+    } catch (err) {
+      uploadResult.innerHTML = `<div class="text-danger">Upload failed: ${esc(err.message)}</div>`;
+    } finally { toggleButtons(false); }
+  });
+
+  btnTestFile.addEventListener('click', async ()=>{
+    toggleButtons(true);
+    welcomeMessage.style.display = "none"; uploadResult.style.display = "block";
+    uploadResult.innerHTML = `
+      <strong>Test file loaded successfully !</strong>
+      <div class="mt-2">
+        <a href="http://deepmass.cn:8000/compound_identification/download-test-file" download="test.mgf" class="btn btn-primary btn-sm">
+          <i class="bi bi-download me-1"></i> Download Test File
+        </a>
+      </div>`;
+    try {
+      const res = await fetch('http://deepmass.cn:8000/compound_identification/upload-test-file', {credentials:'include'});
+      const data = await res.json();
+      if (data.status === 'success') {
+        await refreshList();
+        const first = document.querySelector('#spectrum-list a.list-group-item'); if (first) { first.click(); showSpectrumTab(); }
+      } else {
+        uploadResult.innerHTML += `<div class="text-danger mt-2">${esc(data.message || 'Error')}</div>`;
+      }
+    } finally { toggleButtons(false); }
+  });
+
+  // 运行：进度卡片 + 轮询
+  btnRun.addEventListener('click', async ()=>{
+    toggleButtons(true);
+    ensureRunCard();
+    startProgressPoll();
+    try {
+      const res = await fetch('http://deepmass.cn:8000/compound_identification/run', {method:'POST', credentials:'include'});
+      const data = await res.json();
+      if (data.status === 'success') {
+        await refreshList();
+        const first = document.querySelector('#spectrum-list a.list-group-item'); if (first) first.click();
+        showSpectrumTab();
+      } else {
+        updateRunCard(0, 0, 'error');
+        alert('Run failed: ' + (data.message || 'Error'));
+        stopProgressPoll();
+      }
+    } catch {
+      updateRunCard(0, 0, 'error');
+      stopProgressPoll();
+    } finally { toggleButtons(false); }
+  });
+
+btnSave.addEventListener('click', async ()=>{
+  toggleButtons(true);
+  try {
+    const res = await fetch('http://deepmass.cn:8000/compound_identification/save', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      // 这里你可以自定义结果文件名（比如加时间戳）
+      const resultFilename= 'result_file.zip';
+      welcomeMessage.style.display = "none";
+      uploadResult.style.display = "block";
+      uploadResult.innerHTML = `
+        <strong>Save successful!</strong>
+        <div class="mt-2">
+          <a href="http://deepmass.cn:8000/compound_identification/download?path=${encodeURIComponent(data.file_path)}"
+             download="${resultFilename}" class="btn btn-primary btn-sm">
+            <i class="bi bi-download me-1"></i> Download result file
+          </a>
+        </div>`;
+    } else {
+      welcomeMessage.style.display = "none";
+      uploadResult.style.display = "block";
+      uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(data.message || 'Error')}</div>`;
+    }
+  } catch (err) {
+    welcomeMessage.style.display = "none";
+    uploadResult.style.display = "block";
+    uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(err.message)}</div>`;
+  } finally {
+    toggleButtons(false);
+  }
+});
+
+
+  btnClear.addEventListener('click', async ()=>{
+    await clearAllUIAndServer();
+  });
+
+  async function refreshList(){
+    const res = await fetch('http://deepmass.cn:8000/compound_identification/spectrum-list', {
+      credentials:'include', cache:'no-store', headers:{'Cache-Control':'no-cache'}
+    });
+    const data = await res.json();
+    if (data.status === 'success') renderList(data.names || {});
+  }
+
+  async function clearAllUIAndServer() {
+    toggleButtons(true);
+    try {
+      await fetch('http://deepmass.cn:8000/compound_identification/clear', {method:'POST', credentials:'include'});
+    } catch(e) {}
+    // 彻底清空前端
+    spectrumList.innerHTML='';
+    structHeadRow.innerHTML=''; structColgroup.innerHTML=''; structTbody.innerHTML='';
+    refHeadRow.innerHTML='';  refColgroup.innerHTML='';  refTbody.innerHTML='';
+    formulaTbody.innerHTML=''; infoTbody.innerHTML='';
+    Plotly.purge(plotSpectrumDiv); plotSpectrumDiv.classList.remove('has-data');
+    Plotly.purge(plotLossDiv);     plotLossDiv.classList.remove('has-data');
+    setImg(imgAnno,null); setImg(imgRef,null);
+    welcomeMessage.style.display = "block"; uploadResult.style.display = "none";
+    currentSpecIdx = null; currentFormulaIdx = 0; currentStructureIdx = 0; currentStructureSmiles = null;
+    renderStructureTable([]); renderReferenceTable([]);
+    stopProgressPoll();
+    toggleButtons(false);
+  }
+
+  // ====== 初始化：刷新时左侧清空 ======
+  (async function init(){
+    // 先清空服务器端状态，避免刷新后保留上次会话数据
+    await clearAllUIAndServer();
+
+    // 再启动会话（可选）
+    await ensureSession();
+
+    // 不主动 refreshList；只有上传/测试/运行后才拉取
+    bindHighlightSwitch();
+  })();
+</script>
+</body>
+</html>
