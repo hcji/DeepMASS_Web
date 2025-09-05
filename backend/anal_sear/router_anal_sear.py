@@ -36,7 +36,30 @@ def baseline_session_state():
         "status": "idle",
         "status_message": "",
         "filename": None,
+        # ★ 新增：进度
+        "progress": {"status": "idle", "total": 0, "done": 0},
     }
+def set_progress(session_id: str, total: int = None, done: int = None, status: str = None, message: str = None):
+    st = get_state(session_id) or baseline_session_state()
+    prog = st.get("progress", {"status":"idle","total":0,"done":0})
+    if total is not None: prog["total"] = int(total)
+    if done is not None:  prog["done"]  = int(done)
+    if status:            prog["status"] = status
+    st["progress"] = prog
+    if message is not None:
+        st["status_message"] = message
+    st["last_accessed"] = time.time()
+    set_state(session_id, st)
+
+def get_progress(session_id: str) -> dict:
+    st = get_state(session_id) or {}
+    prog = st.get("progress", {})
+    return {
+        "status": prog.get("status", "idle"),
+        "total":  prog.get("total", 0),
+        "done":   prog.get("done", 0)
+    }
+
 
 def _redis_key(session_id: str) -> str:
     return f"session:{session_id}"
@@ -405,6 +428,8 @@ async def run_analysis(
     temp_path = None
     state_uuid = f"{session_id}_{str(uuid.uuid4())}"
     try:
+        set_progress(session_id, total=0, done=0, status="running", message="Loading references...")
+
         # 加载参考库
         if db_option == "Custom":
             st = get_state(session_id)
@@ -478,6 +503,10 @@ async def run_analysis(
         if spectrums_df is None or name_list is None or len(name_list) == 0:
             return {"status": "error", "message": "File parsing failed, data is empty or format is incorrect"}
 
+        # ★ 初始化总数
+        total_queries = len(spectrums_df)
+        set_progress(session_id, total=total_queries, done=0, status="running", message="Searching candidates...")
+
         (result_state, result_df, all_topk) = matchms_click_fn(
             threshold=threshold,
             res_state=spectrums_df,
@@ -485,7 +514,15 @@ async def run_analysis(
             refs_neg_state=refs_neg,
             hnsw_pos_state=hnsw_pos,
             hnsw_neg_state=hnsw_neg,
+            progress_cb=lambda i: set_progress(
+                session_id,
+                total=total_queries,
+                done=i,
+                status="running",
+                message=f"Processed {i}/{total_queries}"
+            )
         )
+        set_progress(session_id, total=total_queries, done=total_queries, status="finished", message="Completed")
 
         # state_path = os.path.join(STATE_DIR, f"{state_uuid}.pkl")
         # with open(state_path, "wb") as f:
@@ -522,6 +559,7 @@ async def run_analysis(
             "message": "Analysis completed"
         }
     except Exception as e:
+        set_progress(session_id, status="error", message=f"Run failed: {str(e)}")
         print(f"run_analysis error: {str(e)}")
         return {"status": "error", "message": f"Analysis failed: {str(e)}"}
     finally:
@@ -782,3 +820,7 @@ async def get_candidate_plots(
     except Exception as e:
         print(f"get_candidate_plots error: {e}")
         raise HTTPException(status_code=500, detail=f"failed to build plots: {e}")
+
+@router.get("/progress")
+async def get_run_progress(session_id: str = Depends(get_session_id)):
+    return get_progress(session_id)

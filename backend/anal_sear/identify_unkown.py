@@ -55,9 +55,10 @@ def find_most_similar_spectrum(s, p, model, references, k_candidates: int = 50, 
 def id_spectrum_list(spectrum_list,
                      hnsw_pos, model_pos, refs_pos,
                      hnsw_neg, model_neg, refs_neg,
+                     on_progress=None
                      ):
     res = []
-    for s in spectrum_list:
+    for i, s in enumerate(spectrum_list, start=1):
         logging.info(f"")
         sn = None
         if "ionmode" in s.metadata.keys():
@@ -68,7 +69,12 @@ def id_spectrum_list(spectrum_list,
         else:
             sn = find_most_similar_spectrum(s, hnsw_pos, model_pos, refs_pos)
         res.append(sn)
-    # print("res", res)
+        # ★ 每处理完一个查询，通知进度
+        if on_progress:
+            try:
+                on_progress(i)
+            except Exception:
+                print("Error in progress callback")
     return res
 
 

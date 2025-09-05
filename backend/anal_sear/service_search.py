@@ -90,6 +90,7 @@ def matchms_click_fn(
         res_state: pd.DataFrame,
         refs_pos_state, refs_neg_state,
         hnsw_pos_state, hnsw_neg_state,
+        progress_cb=None,
 ):
     spectra = res_state["spectrum"].tolist()
 
@@ -113,6 +114,7 @@ def matchms_click_fn(
         spectra,
         hnsw_pos, model_pos, refs_pos,
         hnsw_neg, model_neg, refs_neg,
+        on_progress=progress_cb
     )
 
     # 1) 为每个查询构建 annotation（多行：TopK 全部），并确定 Top1 是否过阈

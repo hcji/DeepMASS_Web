@@ -372,6 +372,8 @@
 
   let resultsByQuery = {};   // { 1: [topk items...], 2: [...], ... }
   let selectedQueryIdx = null;
+  let progressTimer = null;
+
   window.stateUuid = null;
   
   const uploadInput = document.getElementById("uploadFile");
@@ -397,6 +399,86 @@
   const plotlyLoss = document.getElementById("plotly-loss");
   const annotatedStructure = document.getElementById("annotated-structure");
   const structureImg = document.getElementById("structure-image");
+// ====== 进度卡片渲染到 #uploadResult ======
+function ensureRunCard() {
+  welcomeMessage.style.display = "none";
+  uploadResult.style.display = "block";
+  if (!document.getElementById('runProgressCard')) {
+    uploadResult.innerHTML = `
+      <strong id="runTitle">Running Analogue Searching…</strong>
+      <div class="mt-1 small text-muted" id="runSub">Initializing…</div>
+      <div class="progress mt-2" id="runProgressCard" style="height:20px;">
+        <div id="runProgressBarCard"
+             class="progress-bar progress-bar-striped progress-bar-animated"
+             role="progressbar" style="width:0%">0%</div>
+      </div>`;
+  }
+}
+function updateRunCard(total, done, status, msg) {
+  const title = document.getElementById('runTitle');
+  const sub   = document.getElementById('runSub');
+  const bar   = document.getElementById('runProgressBarCard');
+  if (!title || !sub || !bar) return;
+  bar.classList.remove('bg-danger');
+
+  if (status === 'running') {
+    title.textContent = 'Running Analogue Searching…';
+    if (total > 0) {
+      const pct = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
+      bar.style.width = pct + '%';
+      bar.textContent = pct + '%';
+      sub.textContent = msg || `Processing ${done}/${total}`;
+    } else {
+      bar.style.width = '100%';
+      bar.textContent = 'Starting…';
+      sub.textContent = msg || 'Initializing…';
+    }
+    return;
+  }
+  if (status === 'finished') {
+    title.textContent = 'Completed';
+    bar.style.width = '100%';
+    bar.textContent = '100%';
+    sub.textContent = msg || 'All queries processed.';
+    return;
+  }
+  if (status === 'error') {
+    title.textContent = 'Run Failed';
+    bar.classList.add('bg-danger');
+    bar.style.width = '100%';
+    bar.textContent = 'Error';
+    sub.textContent = msg || 'Please check backend logs.';
+    return;
+  }
+  title.textContent = 'Ready';
+  bar.style.width = '0%';
+  bar.textContent = '0%';
+  sub.textContent = msg || 'Idle.';
+}
+function startProgressPoll() {
+  stopProgressPoll();
+  ensureRunCard();
+  updateRunCard(0, 0, 'running', 'Initializing…');
+  progressTimer = setInterval(async () => {
+    try {
+      const res = await fetch('http://deepmass.cn:8000/anal_search/progress', {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const d = await res.json();
+      // 后端 get_progress 返回 {status,total,done}；消息可用 status_message，也可不显示
+      updateRunCard(d.total ?? 0, d.done ?? 0, d.status ?? 'running');
+      if (d.status === 'finished' || d.status === 'error') stopProgressPoll();
+    } catch {
+      stopProgressPoll();
+      updateRunCard(0, 0, 'error');
+    }
+  }, 500);
+}
+function stopProgressPoll() {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+}
 
   async function ensureSession() {
     try {
@@ -846,6 +928,9 @@ function renderTopKForQuery(qi) {
     }
 
     toggleButtonStates(true);
+    // ★ 开始显示进度卡片并轮询
+    ensureRunCard();
+    startProgressPoll();
     const formData = new FormData();
     formData.append("threshold", threshold);
     formData.append("db_option", dbDefault.checked ? "Default" : "Custom");
@@ -891,6 +976,7 @@ function renderTopKForQuery(qi) {
           annotatedStructure.classList.remove("has-data");
         }
         uploadResult.innerHTML = `<strong>Run successful:</strong><div class="mt-2">${data.message}</div>`;
+        updateRunCard(1, 1, 'finished');  // 防御性收尾，确保 100%
         new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
       } else {
         analysisResults = []; stateUuid = null; targetZipFileName = null;
@@ -903,6 +989,7 @@ function renderTopKForQuery(qi) {
         document.getElementById("plotly-spectrum").classList.remove("has-data");
         document.getElementById("plotly-loss").classList.remove("has-data");
         document.getElementById("annotated-structure").classList.remove("has-data");
+        updateRunCard(0, 0, 'error', data.message || 'Run failed');
       }
     } catch (err) {
       analysisResults = []; stateUuid = null; targetZipFileName = null;
@@ -916,7 +1003,9 @@ function renderTopKForQuery(qi) {
       document.getElementById("plotly-spectrum").classList.remove("has-data");
       document.getElementById("plotly-loss").classList.remove("has-data");
       document.getElementById("annotated-structure").classList.remove("has-data");
+      updateRunCard(0, 0, 'error', err.message);
     } finally {
+      stopProgressPoll();
       toggleButtonStates(false);
     }
   });
