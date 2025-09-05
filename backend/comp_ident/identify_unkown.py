@@ -1,5 +1,5 @@
-import logging
-import os
+# import logging
+# import os
 import pickle
 
 import numpy as np
@@ -78,7 +78,7 @@ def id_spectrum_list(spectrum_list, progress=None, is_deepmass=True):
     res = []
     if is_deepmass:
         for s in progress.tqdm(spectrum_list):
-            logging.info(f"")
+            # logging.info(f"")
             sn = None
             if "ionmode" in s.metadata.keys():
                 if s.metadata["ionmode"] == "negative":

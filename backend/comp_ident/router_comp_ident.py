@@ -191,7 +191,10 @@ async def run_deepms(request: Request):
 
             # 更新进度并把当前 df 落盘
             store.set_progress(sid, total=total, done=i + 1, status="running")
-            store.save_df(sid, df)
+
+            # 只间隔性落盘，减少IO
+            if (i + 1) % 50 == 0 or (i + 1) == total:
+                store.save_df(sid, df)
 
         # 全部完成
         store.set_progress(sid, total=total, done=total, status="finished")
