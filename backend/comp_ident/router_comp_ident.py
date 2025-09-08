@@ -197,8 +197,10 @@ async def run_deepms(request: Request):
                 store.save_df(sid, df)
 
         # 全部完成
+        store.set_progress(sid, total=total, done=total, status="running")
+        result = await select_spectrum(request, idx=0)
         store.set_progress(sid, total=total, done=total, status="finished")
-        return await select_spectrum(request, idx=0)
+        return result
     except Exception as e:
         store.set_progress(sid, total=0, done=0, status="error")
         return {"status": "error", "message": f"Run failed: {e}"}

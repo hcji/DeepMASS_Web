@@ -431,16 +431,21 @@
     bar.classList.remove('bg-danger');
 
     if (status === 'running') {
-      title.textContent = 'Running DeepMASS…';
-      if (total > 0) {
-        const pct = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
-        bar.style.width = pct + '%';
-        bar.textContent = pct + '%';
-        sub.textContent = `Processing ${done}/${total}`;
+      // 百分比
+      const pctRaw = (total > 0) ? Math.floor((done / total) * 100) : 0;
+      const pct = Math.max(0, Math.min(100, pctRaw));
+
+      // 进度条数值
+      bar.style.width = pct + '%';
+      bar.textContent = pct + '%';
+
+      if (pct < 100) {
+        title.textContent = 'Running DeepMASS…';
+        sub.textContent   = `Processing ${done}/${total}`;
       } else {
-        bar.style.width = '100%';
-        bar.textContent = 'Starting…';
-        sub.textContent = 'Initializing…';
+        // 关键：100% 但仍在 running → 显示“Finalizing…”
+        title.textContent = 'Finalizing…';
+        sub.textContent   = 'Transferring results…';
       }
       return;
     }
