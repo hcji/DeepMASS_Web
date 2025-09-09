@@ -362,6 +362,31 @@
 
 </div>
 <script>
+  // === 每个标签页一个 TAB_ID（仅此标签页可见）===
+  function _uuid() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
+  const TAB_ID = sessionStorage.getItem('anal_tab_id') || (() => {
+    const v = _uuid();
+    sessionStorage.setItem('anal_tab_id', v);
+    return v;
+  })();
+
+  // 给任意 URL 自动补上 tab_id=TAB_ID
+  function withTab(url) {
+    const u = new URL(url, location.origin);
+    u.searchParams.set('tab_id', TAB_ID);
+    return u.toString();
+  }
+  // 统一 API 前缀
+  function api(path = '') {
+    const base = 'http://deepmass.cn:8000/anal_search/';
+    return withTab(base + path);
+  }
+
   let currentUploadFile = null;
   let currentUuidFilename = null;
   let isTestFileSelected = false;
@@ -370,7 +395,8 @@
   let targetZipFileName = null;
   let pollingInterval = null;
 
-  let resultsByQuery = {};   // { 1: [topk items...], 2: [...], ... }
+  // 注意：key 采用 0 起始的 query_index
+  let resultsByQuery = {};   // { 0: [topk items...], 1: [...], ... }
   let selectedQueryIdx = null;
   let progressTimer = null;
 
@@ -399,90 +425,90 @@
   const plotlyLoss = document.getElementById("plotly-loss");
   const annotatedStructure = document.getElementById("annotated-structure");
   const structureImg = document.getElementById("structure-image");
-// ====== 进度卡片渲染到 #uploadResult ======
-function ensureRunCard() {
-  welcomeMessage.style.display = "none";
-  uploadResult.style.display = "block";
-  if (!document.getElementById('runProgressCard')) {
-    uploadResult.innerHTML = `
-      <strong id="runTitle">Running Analogue Searching…</strong>
-      <div class="mt-1 small text-muted" id="runSub">Initializing…</div>
-      <div class="progress mt-2" id="runProgressCard" style="height:20px;">
-        <div id="runProgressBarCard"
-             class="progress-bar progress-bar-striped progress-bar-animated"
-             role="progressbar" style="width:0%">0%</div>
-      </div>`;
-  }
-}
-function updateRunCard(total, done, status, msg) {
-  const title = document.getElementById('runTitle');
-  const sub   = document.getElementById('runSub');
-  const bar   = document.getElementById('runProgressBarCard');
-  if (!title || !sub || !bar) return;
-  bar.classList.remove('bg-danger');
 
-  if (status === 'running') {
-    title.textContent = 'Running Analogue Searching…';
-    if (total > 0) {
-      const pct = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
-      bar.style.width = pct + '%';
-      bar.textContent = pct + '%';
-      sub.textContent = msg || `Processing ${done}/${total}`;
-    } else {
+  // ====== 进度卡片渲染到 #uploadResult ======
+  function ensureRunCard() {
+    welcomeMessage.style.display = "none";
+    uploadResult.style.display = "block";
+    if (!document.getElementById('runProgressCard')) {
+      uploadResult.innerHTML = `
+        <strong id="runTitle">Running Analogue Searching…</strong>
+        <div class="mt-1 small text-muted" id="runSub">Initializing…</div>
+        <div class="progress mt-2" id="runProgressCard" style="height:20px;">
+          <div id="runProgressBarCard"
+               class="progress-bar progress-bar-striped progress-bar-animated"
+               role="progressbar" style="width:0%">0%</div>
+        </div>`;
+    }
+  }
+  function updateRunCard(total, done, status, msg) {
+    const title = document.getElementById('runTitle');
+    const sub   = document.getElementById('runSub');
+    const bar   = document.getElementById('runProgressBarCard');
+    if (!title || !sub || !bar) return;
+    bar.classList.remove('bg-danger');
+
+    if (status === 'running') {
+      title.textContent = 'Running Analogue Searching…';
+      if (total > 0) {
+        const pct = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
+        bar.style.width = pct + '%';
+        bar.textContent = pct + '%';
+        sub.textContent = msg || `Processing ${done}/${total}`;
+      } else {
+        bar.style.width = '100%';
+        bar.textContent = 'Starting…';
+        sub.textContent = msg || 'Initializing…';
+      }
+      return;
+    }
+    if (status === 'finished') {
+      title.textContent = 'Completed';
       bar.style.width = '100%';
-      bar.textContent = 'Starting…';
-      sub.textContent = msg || 'Initializing…';
+      bar.textContent = '100%';
+      sub.textContent = msg || 'All queries processed.';
+      return;
     }
-    return;
-  }
-  if (status === 'finished') {
-    title.textContent = 'Completed';
-    bar.style.width = '100%';
-    bar.textContent = '100%';
-    sub.textContent = msg || 'All queries processed.';
-    return;
-  }
-  if (status === 'error') {
-    title.textContent = 'Run Failed';
-    bar.classList.add('bg-danger');
-    bar.style.width = '100%';
-    bar.textContent = 'Error';
-    sub.textContent = msg || 'Please check backend logs.';
-    return;
-  }
-  title.textContent = 'Ready';
-  bar.style.width = '0%';
-  bar.textContent = '0%';
-  sub.textContent = msg || 'Idle.';
-}
-function startProgressPoll() {
-  stopProgressPoll();
-  ensureRunCard();
-  updateRunCard(0, 0, 'running', 'Initializing…');
-  progressTimer = setInterval(async () => {
-    try {
-      const res = await fetch('http://deepmass.cn:8000/anal_search/progress', {
-        credentials: 'include',
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      const d = await res.json();
-      // 后端 get_progress 返回 {status,total,done}；消息可用 status_message，也可不显示
-      updateRunCard(d.total ?? 0, d.done ?? 0, d.status ?? 'running');
-      if (d.status === 'finished' || d.status === 'error') stopProgressPoll();
-    } catch {
-      stopProgressPoll();
-      updateRunCard(0, 0, 'error');
+    if (status === 'error') {
+      title.textContent = 'Run Failed';
+      bar.classList.add('bg-danger');
+      bar.style.width = '100%';
+      bar.textContent = 'Error';
+      sub.textContent = msg || 'Please check backend logs.';
+      return;
     }
-  }, 500);
-}
-function stopProgressPoll() {
-  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
-}
+    title.textContent = 'Ready';
+    bar.style.width = '0%';
+    bar.textContent = '0%';
+    sub.textContent = msg || 'Idle.';
+  }
+  function startProgressPoll() {
+    stopProgressPoll();
+    ensureRunCard();
+    updateRunCard(0, 0, 'running', 'Initializing…');
+    progressTimer = setInterval(async () => {
+      try {
+        const res = await fetch(api('progress'), {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        const d = await res.json();
+        updateRunCard(d.total ?? 0, d.done ?? 0, d.status ?? 'running');
+        if (d.status === 'finished' || d.status === 'error') stopProgressPoll();
+      } catch {
+        stopProgressPoll();
+        updateRunCard(0, 0, 'error');
+      }
+    }, 500);
+  }
+  function stopProgressPoll() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+  }
 
   async function ensureSession() {
     try {
-      const res = await fetch("http://deepmass.cn:8000/anal_search/start-session", {
+      const res = await fetch(api('start-session'), {
         method: "GET",
         credentials: "include"
       });
@@ -507,15 +533,16 @@ function stopProgressPoll() {
     btnSave.innerHTML = disable ? `<i class="bi bi-save me-1"></i> Save Results (Processing...)` : `<i class="bi bi-save me-1"></i> Save Results`;
   }
 
+  // 将扁平结果按 0 起始的 query_index 分组
   function groupResultsByQuery(flatList) {
     const m = {};
     flatList.forEach(it => {
-      const qi = Number(it.query_index ?? 1);
+      const qi = Number(it.query_index ?? 0); // 0-based
       if (!m[qi]) m[qi] = [];
       m[qi].push(it);
     });
     Object.keys(m).forEach(qi => {
-      m[qi].sort((a, b) => Number(a.rank || 999) - Number(b.rank || 999));
+      m[qi].sort((a, b) => Number(a.rank ?? 1e9) - Number(b.rank ?? 1e9)); // rank 1-based，从小到大
     });
     return m;
   }
@@ -536,65 +563,65 @@ function stopProgressPoll() {
     resultTbody.innerHTML = `<tr>${keys.map(k=>`<td class="text-start">${item[k] ?? ""}</td>`).join("")}</tr>`;
   }
 
-function renderTopKForQuery(qi) {
-  selectedQueryIdx = qi;
-  const topkAll = resultsByQuery[qi] || [];
+  // 渲染指定 0 起始的 qi
+  function renderTopKForQuery(qi) {
+    selectedQueryIdx = qi;
+    const topkAll = resultsByQuery[qi] || [];
 
-  // === 读取 threshold 并过滤 ===
-  let threshold = parseFloat(document.getElementById("thresholdInput").value);
-  if (isNaN(threshold)) threshold = 0.0;
-  const topk = topkAll.filter(item => {
-    return item.StructSimScore !== null && item.StructSimScore >= threshold;
-  });
-
-  if (!topk.length) {
-    topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates (Score < ${threshold})</td></tr>`;
-    Plotly.purge("plotly-spectrum");
-    Plotly.purge("plotly-loss");
-    structureImg.style.display = "none";
-    plotlySpectrum.classList.remove("has-data");
-    plotlyLoss.classList.remove("has-data");
-    annotatedStructure.classList.remove("has-data");
-    renderInformationFromItem(null);
-    return;
-  }
-
-  topkTbody.innerHTML = topk.map(item => {
-    const rank = item.rank ?? "";
-    const score = item.StructSimScore ?? "";
-    const dbi = item.database_index ?? "";
-    const smiles = item.smiles ?? "";
-    return `
-      <tr class="topk-row" data-q="${item.query_index}" data-rank="${item.rank}" style="cursor:pointer">
-        <td>Top ${rank}</td>
-        <td>${score}</td>
-        <td>${dbi}</td>
-        <td>${smiles}</td>
-      </tr>`;
-  }).join("");
-
-  document.querySelectorAll(".topk-row").forEach(tr => {
-    tr.addEventListener("click", async (ev) => {
-      const qiN = Number(tr.dataset.q);
-      const rkN = Number(tr.dataset.rank);
-      document.querySelectorAll(".topk-row").forEach(row => row.classList.remove("table-active"));
-      tr.classList.add("table-active");
-      const item = (resultsByQuery[qiN] || []).find(x => Number(x.rank) === Number(rkN));
-      if (item) {
-        await displayCandidateDetail(item);
-        renderInformationFromItem(item);
-      }
+    // 按阈值过滤
+    let threshold = parseFloat(document.getElementById("thresholdInput").value);
+    if (isNaN(threshold)) threshold = 0.0;
+    const topk = topkAll.filter(item => {
+      return item.StructSimScore !== null && item.StructSimScore >= threshold;
     });
-  });
 
-  // 默认显示第一个满足阈值的
-  const first = topk[0];
-  const firstRow = document.querySelector(`.topk-row[data-q="${first.query_index}"][data-rank="${first.rank}"]`);
-  if (firstRow) firstRow.classList.add("table-active");
-  displayCandidateDetail(first);
-  renderInformationFromItem(first);
-}
+    if (!topk.length) {
+      topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates (Score < ${threshold})</td></tr>`;
+      Plotly.purge("plotly-spectrum");
+      Plotly.purge("plotly-loss");
+      structureImg.style.display = "none";
+      plotlySpectrum.classList.remove("has-data");
+      plotlyLoss.classList.remove("has-data");
+      annotatedStructure.classList.remove("has-data");
+      renderInformationFromItem(null);
+      return;
+    }
 
+    topkTbody.innerHTML = topk.map(item => {
+      const rank1 = Number(item.rank ?? 1);   // 1 起始
+      const score = item.StructSimScore ?? "";
+      const dbi = item.database_index ?? "";
+      const smiles = item.smiles ?? "";
+      return `
+        <tr class="topk-row" data-q="${item.query_index}" data-rank="${rank1}" style="cursor:pointer">
+          <td>Top ${rank1}</td>
+          <td>${score}</td>
+          <td>${dbi}</td>
+          <td>${smiles}</td>
+        </tr>`;
+    }).join("");
+
+    document.querySelectorAll(".topk-row").forEach(tr => {
+      tr.addEventListener("click", async (ev) => {
+        const qiN = Number(tr.dataset.q);      // 0-based
+        const rkN = Number(tr.dataset.rank);   // 1-based
+        document.querySelectorAll(".topk-row").forEach(row => row.classList.remove("table-active"));
+        tr.classList.add("table-active");
+        const item = (resultsByQuery[qiN] || []).find(x => Number(x.rank) === rkN);
+        if (item) {
+          await displayCandidateDetail(item);
+          renderInformationFromItem(item);
+        }
+      });
+    });
+
+    // 默认显示第一个满足阈值的（rank 已是 1-based）
+    const first = topk[0];
+    const firstRow = document.querySelector(`.topk-row[data-q="${first.query_index}"][data-rank="${first.rank}"]`);
+    if (firstRow) firstRow.classList.add("table-active");
+    displayCandidateDetail(first);
+    renderInformationFromItem(first);
+  }
 
   function displayResultByIndex(index) {
     if (!analysisResults || analysisResults.length === 0 || !analysisResults[index]) {
@@ -602,7 +629,7 @@ function renderTopKForQuery(qi) {
       resultTbody.innerHTML = `<tr><td colspan="1" class="text-center">No results to display</td></tr>`;
       Plotly.purge("plotly-spectrum");
       Plotly.purge("plotly-loss");
-      document.getElementById("structure-image").style.display = "none";
+      structureImg.style.display = "none";
       document.getElementById("plotly-spectrum").classList.remove("has-data");
       document.getElementById("plotly-loss").classList.remove("has-data");
       document.getElementById("annotated-structure").classList.remove("has-data");
@@ -642,7 +669,7 @@ function renderTopKForQuery(qi) {
     new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
   }
 
-  // 监听 Bootstrap 的 Tab 切换事件
+  // 监听 Bootstrap 的 Tab 切换事件（Plotly 自适应）
   document.querySelectorAll('#tabMenu a[data-bs-toggle="tab"]').forEach(tab => {
     tab.addEventListener('shown.bs.tab', (e) => {
       if (e.target.id === 'tab-spectrum') {
@@ -656,6 +683,7 @@ function renderTopKForQuery(qi) {
     });
   });
 
+  // 自定义库轮询
   function startCustomDbPolling(filename, fileSizeMB) {
     if (pollingInterval) clearInterval(pollingInterval);
     const POLLING_TIMEOUT = fileSizeMB > 100 ? 15 * 60 * 1000 : 10 * 60 * 1000;
@@ -675,7 +703,7 @@ function renderTopKForQuery(qi) {
         return;
       }
       try {
-        const res = await fetch(`http://deepmass.cn:8000/anal_search/custom-db-status`, { credentials: "include" });
+        const res = await fetch(api('custom-db-status'), { credentials: "include" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (data.status === "success") {
@@ -733,7 +761,7 @@ function renderTopKForQuery(qi) {
 
     try {
       toggleButtonStates(true);
-      const response = await fetch(`http://deepmass.cn:8000/anal_search/upload`, {
+      const response = await fetch(api('upload'), {
         method: "POST",
         body: formData,
         credentials: "include"
@@ -759,7 +787,8 @@ function renderTopKForQuery(qi) {
             a.dataset.index = index;
             a.addEventListener("click", (ev)=>{ 
               ev.preventDefault(); 
-              renderTopKForQuery(index + 1); // 左侧第 index 项，对应的 query_index = index + 1
+              // 0 起始
+              renderTopKForQuery(index);
             });
             spectrumList.appendChild(a);
           });
@@ -788,7 +817,7 @@ function renderTopKForQuery(qi) {
     uploadResult.innerHTML = `
       <strong>Test file loaded successfully!</strong>
       <div class="mt-2">
-        <a href="http://deepmass.cn:8000/anal_search/download-test-file" download="${testFileName}" class="btn btn-primary btn-sm">
+        <a href="${api('download-test-file')}" download="${testFileName}" class="btn btn-primary btn-sm">
           <i class="bi bi-download me-1"></i> Download Test File
         </a>
       </div>
@@ -796,11 +825,11 @@ function renderTopKForQuery(qi) {
 
     try {
       toggleButtonStates(true);
-      const response = await fetch(`http://deepmass.cn:8000/anal_search/upload-test-file`, {
+      const response = await fetch(api('upload-test-file'), {
         method: "GET",
         credentials: "include"
       });
-      const data = await response.json();
+      const data = await response.json(); // <-- 这里改成 response.json()
       if (data.status === "success") {
         spectrumList.innerHTML = "";
         const nameArray = Object.values(data.names?.title || {});
@@ -811,7 +840,8 @@ function renderTopKForQuery(qi) {
           a.dataset.index = index;
           a.addEventListener("click", (ev)=>{ 
             ev.preventDefault(); 
-            renderTopKForQuery(index + 1); // 左侧第 index 项，对应的 query_index = index + 1
+            // 0 起始
+            renderTopKForQuery(index);
           });
           spectrumList.appendChild(a);
         });
@@ -866,7 +896,7 @@ function renderTopKForQuery(qi) {
 
     try {
       toggleButtonStates(true);
-      const res = await fetch(`http://deepmass.cn:8000/anal_search/upload-custom-db`, {
+      const res = await fetch(api('upload-custom-db'), {
         method: "POST",
         body: formData,
         credentials: "include"
@@ -907,7 +937,7 @@ function renderTopKForQuery(qi) {
     }
     if (dbCustom.checked) {
       try {
-        const statusRes = await fetch(`http://deepmass.cn:8000/anal_search/custom-db-status`, { credentials: "include" });
+        const statusRes = await fetch(api('custom-db-status'), { credentials: "include" });
         const statusData = await statusRes.json();
         if (statusData.status !== "success") {
           alert("Custom database is not ready.");
@@ -921,16 +951,16 @@ function renderTopKForQuery(qi) {
 
     if (!isTestFileSelected && currentUuidFilename && currentUploadFile) {
       try {
-        const checkResponse = await fetch(`http://deepmass.cn:8000/anal_search/check-file?uuid_filename=${encodeURIComponent(currentUuidFilename)}`, { credentials: "include" });
+        const checkResponse = await fetch(api(`check-file?uuid_filename=${encodeURIComponent(currentUuidFilename)}`), { credentials: "include" });
         const checkData = await checkResponse.json();
         if (checkData.status !== "success") currentUuidFilename = null;
       } catch { currentUuidFilename = null; }
     }
 
     toggleButtonStates(true);
-    // ★ 开始显示进度卡片并轮询
     ensureRunCard();
     startProgressPoll();
+
     const formData = new FormData();
     formData.append("threshold", threshold);
     formData.append("db_option", dbDefault.checked ? "Default" : "Custom");
@@ -949,7 +979,7 @@ function renderTopKForQuery(qi) {
     }
 
     try {
-      const response = await fetch(`http://deepmass.cn:8000/anal_search/run`, {
+      const response = await fetch(api('run'), {
         method: "POST",
         body: formData,
         credentials: "include"
@@ -965,7 +995,8 @@ function renderTopKForQuery(qi) {
         resultsByQuery = groupResultsByQuery(analysisResults);
         resultTbody.innerHTML = ""; resultThead.innerHTML = "";
         if (Object.keys(resultsByQuery).length > 0) {
-          renderTopKForQuery(1);
+          // 0 起始的第一个 query
+          renderTopKForQuery(0);
         } else {
           topkTbody.innerHTML = `<tr><td class="text-center" colspan="4">No candidates</td></tr>`;
           renderInformationFromItem(null);
@@ -976,7 +1007,7 @@ function renderTopKForQuery(qi) {
           annotatedStructure.classList.remove("has-data");
         }
         uploadResult.innerHTML = `<strong>Run successful:</strong><div class="mt-2">${data.message}</div>`;
-        updateRunCard(1, 1, 'finished');  // 防御性收尾，确保 100%
+        updateRunCard(1, 1, 'finished');  // 收尾确保 100%
         new bootstrap.Tab(document.querySelector("#tab-spectrum")).show();
       } else {
         analysisResults = []; stateUuid = null; targetZipFileName = null;
@@ -1010,57 +1041,54 @@ function renderTopKForQuery(qi) {
     }
   });
 
-btnSave.addEventListener("click", async () => {
-  if (!analysisResults || analysisResults.length === 0 || !stateUuid || !targetZipFileName) {
-    alert("No results to save, please run analysis first");
-    return;
-  }
-  toggleButtonStates(true);
-
-  // === 读取当前阈值并传给后端 ===
-  let threshold = parseFloat(document.getElementById("thresholdInput").value);
-  if (isNaN(threshold)) threshold = 0.0;
-
-  const formData = new FormData();
-  formData.append("state_uuid", stateUuid);
-  formData.append("target_zip_file_name", targetZipFileName);
-  formData.append("threshold", threshold);   // ★ 传递阈值
-
-  try {
-    const res = await fetch(`http://deepmass.cn:8000/anal_search/save-results`, {
-      method: "POST",
-      body: formData,
-      credentials: "include"
-    });
-    const data = await res.json();
-    uploadResult.style.display = "block";
-    if (data.status === "success") {
-      // ★ 后端现在返回 xlsx
-      const xlsxFilename = data.file_path.split('/').pop();
-      uploadResult.innerHTML = `
-        <strong>Save successful!</strong>
-        <div class="mt-2">
-          <a href="http://deepmass.cn:8000/anal_search/download-result-file?file_path=${encodeURIComponent(data.file_path)}"
-             download="${xlsxFilename}" class="btn btn-primary btn-sm">
-            <i class="bi bi-download me-1"></i> Download result file
-          </a>
-        </div>`;
-    } else {
-      uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+  btnSave.addEventListener("click", async () => {
+    if (!analysisResults || analysisResults.length === 0 || !stateUuid || !targetZipFileName) {
+      alert("No results to save, please run analysis first");
+      return;
     }
-  } catch (err) {
-    uploadResult.style.display = "block";
-    uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
-  } finally {
-    toggleButtonStates(false);
-  }
-});
+    toggleButtonStates(true);
 
+    let threshold = parseFloat(document.getElementById("thresholdInput").value);
+    if (isNaN(threshold)) threshold = 0.0;
+
+    const formData = new FormData();
+    formData.append("state_uuid", stateUuid);
+    formData.append("target_zip_file_name", targetZipFileName);
+    formData.append("threshold", threshold);
+
+    try {
+      const res = await fetch(api('save-results'), {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      const data = await res.json();
+      uploadResult.style.display = "block";
+      if (data.status === "success") {
+        const xlsxFilename = data.file_path.split('/').pop();
+        uploadResult.innerHTML = `
+          <strong>Save successful!</strong>
+          <div class="mt-2">
+            <a href="${api(`download-result-file?file_path=${encodeURIComponent(data.file_path)}`)}"
+               download="${xlsxFilename}" class="btn btn-primary btn-sm">
+              <i class="bi bi-download me-1"></i> Download result file
+            </a>
+          </div>`;
+      } else {
+        uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+      }
+    } catch (err) {
+      uploadResult.style.display = "block";
+      uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
+    } finally {
+      toggleButtonStates(false);
+    }
+  });
 
   btnClear.addEventListener("click", async () => {
     toggleButtonStates(true);
     try {
-      const res = await fetch(`http://deepmass.cn:8000/anal_search/clear`, {
+      const res = await fetch(api('clear'), {
         method: "POST",
         credentials: "include"
       });
@@ -1111,6 +1139,7 @@ btnSave.addEventListener("click", async () => {
     }
   });
 
+  // 懒加载候选详情（query_index 0-based，rank 1-based）
   async function displayCandidateDetail(item) {
     let spec = item.spectrum_plot;
     let loss = item.spectrum_loss_plot;
@@ -1118,7 +1147,7 @@ btnSave.addEventListener("click", async () => {
 
     if (!spec || !loss || !structImg) {
       const res = await fetch(
-        `http://deepmass.cn:8000/anal_search/get-candidate-plots?state_uuid=${encodeURIComponent(window.stateUuid)}&query_index=${item.query_index}&rank=${item.rank}`,
+        api(`get-candidate-plots?state_uuid=${encodeURIComponent(window.stateUuid)}&query_index=${item.query_index}&rank=${item.rank}`),
         { credentials: "include" }
       );
       const data = await res.json();

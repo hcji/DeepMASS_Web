@@ -261,6 +261,28 @@
 <div id="cellTooltip" class="cell-tooltip"></div>
 
 <script>
+  // ========== 每个标签页唯一 TAB_ID + URL 附加工具 ==========
+  function uuidv4() {
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
+  const TAB_ID = sessionStorage.getItem('tab_id') || (() => {
+    const v = uuidv4();
+    sessionStorage.setItem('tab_id', v);
+    return v;
+  })();
+
+  function withTab(url) {
+    const u = new URL(url);
+    u.searchParams.set('tab_id', TAB_ID);
+    return u.toString();
+  }
+  function api(pathWithQuery='') {
+    const base = 'http://deepmass.cn:8000/compound_identification/';
+    return withTab(base + pathWithQuery);
+  }
+
   const uploadInput    = document.getElementById("uploadFile");
   const btnUploadFile  = document.getElementById("btnUploadFile");
   const btnTestFile    = document.getElementById("btnTestFile");
@@ -304,11 +326,9 @@
   let currentStructureSmiles = null;
   let progressTimer = null;
 
-  // ====== 默认表头（运行前就显示） ======
   const DEFAULT_STRUCT_COLS = ["Title","MolecularFormula","CanonicalSMILES","InChIKey","DeepMass Score"];
   const DEFAULT_REF_COLS    = ["name","adduct","smiles","parent_mass","database"];
 
-  // ============ 工具函数 ============
   function esc(v) {
     if (v === null || v === undefined) return "";
     return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -330,14 +350,12 @@
     return [...prefer, ...rest];
   }
 
-  // 单元格：显示单行省略，悬浮看全文
   function cellHTML(value) {
     const full = (value === undefined || value === null) ? "" : String(value);
     const display = full.replace(/[\r\n]+/g, " ");
     return `<div class="cell-clip" data-full="${esc(full)}">${esc(display)}</div>`;
   }
 
-  // 表渲染
   function renderStructureTable(rows) {
     const cols = pickColumns(rows, STRUCT_PREFERRED_ORDER, DEFAULT_STRUCT_COLS);
     structHeadRow.innerHTML  = cols.map(c => `<th>${esc(c)}</th>`).join("");
@@ -377,7 +395,6 @@
       : `<tr><td colspan="3" class="text-center">No formulas</td></tr>`;
   }
 
-  // —— 悬浮提示 —— //
   const cellTooltip = document.getElementById('cellTooltip');
   function showCellTooltip(targetEl) {
     const full = targetEl.getAttribute('data-full') || '';
@@ -408,7 +425,6 @@
   });
   ['scroll','resize'].forEach(evt => window.addEventListener(evt, hideCellTooltip, {passive:true}));
 
-  // ====== 进度条放入 uploadResult（新的 UI） ======
   function ensureRunCard() {
     welcomeMessage.style.display = "none";
     uploadResult.style.display = "block";
@@ -431,19 +447,14 @@
     bar.classList.remove('bg-danger');
 
     if (status === 'running') {
-      // 百分比
       const pctRaw = (total > 0) ? Math.floor((done / total) * 100) : 0;
       const pct = Math.max(0, Math.min(100, pctRaw));
-
-      // 进度条数值
       bar.style.width = pct + '%';
       bar.textContent = pct + '%';
-
       if (pct < 100) {
         title.textContent = 'Running DeepMASS…';
         sub.textContent   = `Processing ${done}/${total}`;
       } else {
-        // 关键：100% 但仍在 running → 显示“Finalizing…”
         title.textContent = 'Finalizing…';
         sub.textContent   = 'Transferring results…';
       }
@@ -476,7 +487,7 @@
     updateRunCard(0, 0, 'running');
     progressTimer = setInterval(async () => {
       try {
-        const res = await fetch('http://deepmass.cn:8000/compound_identification/progress', {
+        const res = await fetch(api('progress'), {
           credentials: 'include',
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache' }
@@ -494,7 +505,6 @@
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
   }
 
-  // 常用 UI
   function toggleButtons(disabled) {
     [btnUploadFile,btnTestFile,btnRun,btnSave,btnClear].forEach(b=>b.disabled=disabled);
     btnUploadFile.innerHTML = disabled ? `<i class="bi bi-upload me-1"></i> Upload File (Processing…)` : `<i class="bi bi-upload me-1"></i> Upload File`;
@@ -513,7 +523,7 @@
 
   async function ensureSession() {
     try {
-      await fetch('http://deepmass.cn:8000/compound_identification/start-session', {credentials:'include', cache:'no-store'});
+      await fetch(api('start-session'), {credentials:'include', cache:'no-store'});
     } catch(e) {}
   }
 
@@ -530,7 +540,6 @@
     });
   }
 
-  // ====== Plotly 同尺寸 ======
   const BASE_MARGIN = { l: 50, r: 20, t: 20, b: 40 };
   const BASE_CONFIG = { responsive: false, displayModeBar: false, scrollZoom: false };
   const PLOTS = new Set();
@@ -555,7 +564,6 @@
   (()=>{ const row=document.getElementById('plot-row'); if(!row) return; const ro=new ResizeObserver(()=>relayoutAllPlotsSameSize()); ro.observe(row); })();
   window.addEventListener('resize', relayoutAllPlotsSameSize);
 
-  // ====== Highlight 开关事件 ======
   function bindHighlightSwitch() {
     toggleHighlightEl = document.getElementById('toggleHighlight');
     if (!toggleHighlightEl) return;
@@ -570,10 +578,9 @@
     }, { once:false });
   }
 
-  // ====== 级联 ======
   async function onSpectrumClick(idx) {
     currentSpecIdx = idx; currentFormulaIdx = 0; currentStructureIdx = 0; currentStructureSmiles = null;
-    const res = await fetch(`http://deepmass.cn:8000/compound_identification/select-spectrum?idx=${idx}`, {credentials:'include', cache:'no-store'});
+    const res = await fetch(api(`select-spectrum?idx=${idx}`), {credentials:'include', cache:'no-store'});
     const data = await res.json();
     if (data.status !== 'success') { alert(data.message||'Error'); return; }
     renderInfoTable(data.information_table || []);
@@ -596,7 +603,7 @@
 
   async function loadStructuresAndRefs(formulaIdx) {
     currentFormulaIdx = formulaIdx;
-    const res = await fetch(`http://deepmass.cn:8000/compound_identification/structures?spec_idx=${currentSpecIdx}&formula_idx=${currentFormulaIdx}`, {credentials:'include', cache:'no-store'});
+    const res = await fetch(api(`structures?spec_idx=${currentSpecIdx}&formula_idx=${currentFormulaIdx}`), {credentials:'include', cache:'no-store'});
     const data = await res.json();
 
     if (data.status !== 'success') {
@@ -635,7 +642,7 @@
     const tr = document.querySelector(`#structure-finder-table tr[data-index="${structIdx}"]`);
     currentStructureSmiles = tr?.getAttribute('data-smiles') || null;
 
-    const res = await fetch(`http://deepmass.cn:8000/compound_identification/reference-table?spec_idx=${currentSpecIdx}&structure_idx=${currentStructureIdx}`, {credentials:'include', cache:'no-store'});
+    const res = await fetch(api(`reference-table?spec_idx=${currentSpecIdx}&structure_idx=${currentStructureIdx}`), {credentials:'include', cache:'no-store'});
     const d2 = await res.json();
     if (d2.status !== 'success') {
       renderReferenceTable([]);
@@ -667,7 +674,7 @@
       structure_smiles: currentStructureSmiles || '',
       highlight: highlightEnabled ? 'true' : 'false'
     }).toString();
-    const res = await fetch(`http://deepmass.cn:8000/compound_identification/reference-select?${qs}`, {credentials:'include', cache:'no-store'});
+    const res = await fetch(api(`reference-select?${qs}`), {credentials:'include', cache:'no-store'});
     const data = await res.json();
     if (data.status !== 'success') { return; }
     showPlotlySameSize(plotSpectrumDiv, data.spectrum_plot || null);
@@ -704,7 +711,6 @@
     });
   }
 
-  // 切换到 Structure 页时绑定开关
   document.querySelectorAll('#tabMenu a[data-bs-toggle="tab"]').forEach(tab => {
     tab.addEventListener('shown.bs.tab', (e) => {
       if (e.target.id === 'tab-structure') bindHighlightSwitch();
@@ -712,7 +718,6 @@
     });
   });
 
-  // ====== 顶部按钮 & 初始化 ======
   btnUploadFile.addEventListener('click', ()=>{ uploadInput.value = null; uploadInput.click(); });
 
   uploadInput.addEventListener('change', async (e)=>{
@@ -721,9 +726,7 @@
     welcomeMessage.style.display = "none"; uploadResult.style.display = "block";
     const fd = new FormData(); files.forEach(f=> fd.append('files', f));
     try {
-      const res = await fetch('http://deepmass.cn:8000/compound_identification/upload', {
-        method:'POST', body:fd, credentials:'include'
-      });
+      const res = await fetch(api('upload'), { method:'POST', body:fd, credentials:'include' });
       const data = await res.json();
       if (data.status === 'success') {
         uploadResult.innerHTML = `<strong>${esc(data.message || 'Upload Successful!')}</strong>
@@ -749,7 +752,7 @@
         </a>
       </div>`;
     try {
-      const res = await fetch('http://deepmass.cn:8000/compound_identification/upload-test-file', {credentials:'include'});
+      const res = await fetch(api('upload-test-file'), {credentials:'include'});
       const data = await res.json();
       if (data.status === 'success') {
         await refreshList();
@@ -760,13 +763,12 @@
     } finally { toggleButtons(false); }
   });
 
-  // 运行：进度卡片 + 轮询
   btnRun.addEventListener('click', async ()=>{
     toggleButtons(true);
     ensureRunCard();
     startProgressPoll();
     try {
-      const res = await fetch('http://deepmass.cn:8000/compound_identification/run', {method:'POST', credentials:'include'});
+      const res = await fetch(api('run'), {method:'POST', credentials:'include'});
       const data = await res.json();
       if (data.status === 'success') {
         await refreshList();
@@ -783,40 +785,39 @@
     } finally { toggleButtons(false); }
   });
 
-btnSave.addEventListener('click', async ()=>{
-  toggleButtons(true);
-  try {
-    const res = await fetch('http://deepmass.cn:8000/compound_identification/save', {
-      method: 'POST',
-      credentials: 'include'
-    });
-    const data = await res.json();
-    if (data.status === 'success') {
-      // 这里你可以自定义结果文件名（比如加时间戳）
-      const resultFilename= 'result_file.zip';
+  btnSave.addEventListener('click', async ()=>{
+    toggleButtons(true);
+    try {
+      const res = await fetch(api('save'), { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        const resultFilename = 'result_file.zip';
+        const dl = withTab(
+          `http://deepmass.cn:8000/compound_identification/download?path=${encodeURIComponent(data.file_path)}`
+        );
+
+        welcomeMessage.style.display = "none";
+        uploadResult.style.display = "block";
+        uploadResult.innerHTML = `
+          <strong>Save successful!</strong>
+          <div class="mt-2">
+            <a href="${dl}" download="${resultFilename}" class="btn btn-primary btn-sm" rel="noopener">
+              <i class="bi bi-download me-1"></i> Download result file
+            </a>
+          </div>`;
+      } else {
+        welcomeMessage.style.display = "none";
+        uploadResult.style.display = "block";
+        uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(data.message || 'Error')}</div>`;
+      }
+    } catch (err) {
       welcomeMessage.style.display = "none";
       uploadResult.style.display = "block";
-      uploadResult.innerHTML = `
-        <strong>Save successful!</strong>
-        <div class="mt-2">
-          <a href="http://deepmass.cn:8000/compound_identification/download?path=${encodeURIComponent(data.file_path)}"
-             download="${resultFilename}" class="btn btn-primary btn-sm">
-            <i class="bi bi-download me-1"></i> Download result file
-          </a>
-        </div>`;
-    } else {
-      welcomeMessage.style.display = "none";
-      uploadResult.style.display = "block";
-      uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(data.message || 'Error')}</div>`;
+      uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(err.message)}</div>`;
+    } finally {
+      toggleButtons(false);
     }
-  } catch (err) {
-    welcomeMessage.style.display = "none";
-    uploadResult.style.display = "block";
-    uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(err.message)}</div>`;
-  } finally {
-    toggleButtons(false);
-  }
-});
+  });
 
 
   btnClear.addEventListener('click', async ()=>{
@@ -824,7 +825,7 @@ btnSave.addEventListener('click', async ()=>{
   });
 
   async function refreshList(){
-    const res = await fetch('http://deepmass.cn:8000/compound_identification/spectrum-list', {
+    const res = await fetch(api('spectrum-list'), {
       credentials:'include', cache:'no-store', headers:{'Cache-Control':'no-cache'}
     });
     const data = await res.json();
@@ -834,9 +835,8 @@ btnSave.addEventListener('click', async ()=>{
   async function clearAllUIAndServer() {
     toggleButtons(true);
     try {
-      await fetch('http://deepmass.cn:8000/compound_identification/clear', {method:'POST', credentials:'include'});
+      await fetch(api('clear'), {method:'POST', credentials:'include'});
     } catch(e) {}
-    // 彻底清空前端
     spectrumList.innerHTML='';
     structHeadRow.innerHTML=''; structColgroup.innerHTML=''; structTbody.innerHTML='';
     refHeadRow.innerHTML='';  refColgroup.innerHTML='';  refTbody.innerHTML='';
@@ -851,17 +851,12 @@ btnSave.addEventListener('click', async ()=>{
     toggleButtons(false);
   }
 
-  // ====== 初始化：刷新时左侧清空 ======
   (async function init(){
-    // 先清空服务器端状态，避免刷新后保留上次会话数据
-    await clearAllUIAndServer();
-
-    // 再启动会话（可选）
-    await ensureSession();
-
-    // 不主动 refreshList；只有上传/测试/运行后才拉取
+    await ensureSession();         // 先拿到 session_id（很关键）
+    await clearAllUIAndServer();   // 再去调用 /clear 才不会 400
     bindHighlightSwitch();
   })();
+
 </script>
 </body>
 </html>

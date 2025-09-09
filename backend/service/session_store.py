@@ -3,7 +3,7 @@ import json
 import time
 import uuid
 import pickle
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import redis  # pip install redis
 from fastapi import Request, Response, HTTPException
@@ -55,22 +55,37 @@ class Store:
 
     # --------- 会话 ---------
     def get_or_create_session(self, request: Request, response: Response) -> str:
+        """
+        重要策略变更：
+        - 如果浏览器里已有 cookie 的 sid，则**永远复用**它（不再因为本 namespace 还没有状态/文件而换新 sid）。
+        - 若本 namespace 下还没有 state，则写入一个最小状态（保证 require_session 可通过）。
+        """
         sid = request.cookies.get(self.cookie_name)
-        if sid and (self.r.exists(self._key_state(sid)) or os.path.exists(self._df_path(sid))):
-            self._touch_redis(sid)
+        if sid:
+            # 本命名空间下若没有状态，就初始化一个轻量状态；否则仅续期
+            if not self.r.exists(self._key_state(sid)):
+                self._write_state(sid, {"last_accessed": time.time()})
+            else:
+                self._touch_redis(sid)
+            # 统一续期 cookie
             response.set_cookie(self.cookie_name, sid, httponly=True, samesite="lax", max_age=self.ttl)
             return sid
 
+        # 没有 cookie：新建 sid，并初始化本命名空间的轻量状态
         sid = str(uuid.uuid4())
         self._write_state(sid, {"last_accessed": time.time()})
         response.set_cookie(self.cookie_name, sid, httponly=True, samesite="lax", max_age=self.ttl)
         return sid
 
     def require_session(self, request: Request) -> str:
+        """
+        只校验浏览器是否带了 cookie 的 sid，并确保本命名空间有 state（如没有，视为过期/无效）。
+        """
         sid = request.cookies.get(self.cookie_name)
         if not sid:
             raise HTTPException(400, "Missing session_id")
         if not (self.r.exists(self._key_state(sid)) or os.path.exists(self._df_path(sid))):
+            # 注意：这里用的是“本命名空间”的状态/文件
             raise HTTPException(400, "Invalid/expired session")
         self._touch_redis(sid)
         return sid
@@ -87,22 +102,22 @@ class Store:
         self._write_state(sid, st)
 
     # --------- 进度 ---------
-    def set_progress(self, sid: str, *, total: int, done: int, status: str):
-        payload = {"total": total, "done": done, "status": status, "ts": time.time()}
+    def set_progress(self, sid: str, *, total: int, done: int, status: str, message: Optional[str] = None):
+        payload: Dict[str, Any] = {
+            "total": int(total),
+            "done": int(done),
+            "status": str(status),
+            "ts": time.time(),
+        }
+        if message is not None:
+            payload["message"] = str(message)
         self.r.setex(self._key_prog(sid), self.ttl, json.dumps(payload).encode("utf-8"))
 
     def get_progress(self, sid: str) -> dict:
         raw = self.r.get(self._key_prog(sid))
-        return json.loads(raw.decode("utf-8")) if raw else {"status": "success", "total": 0, "done": 0}
+        return json.loads(raw.decode("utf-8")) if raw else {"status": "success", "total": 0, "done": 0, "message": ""}
 
     # --------- 大数据（始终落盘 pickle） ---------
-    # def save_df(self, sid: str, df):
-    #     p = self._df_path(sid)
-    #     with open(p, "wb") as f:
-    #         pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
-    #     self.update_state(sid, last_accessed=time.time())
-
-
     def save_df(self, sid: str, df):
         """
         原子写入 DataFrame 到 pickle，先写临时文件再 os.replace 到目标路径，
@@ -110,17 +125,13 @@ class Store:
         """
         p = self._df_path(sid)
         tmp_path = p + f".tmp.{uuid.uuid4().hex}"
-        # 确保目录存在
         os.makedirs(os.path.dirname(p), exist_ok=True)
         try:
-            # 使用 NamedTemporaryFile 可能在 Windows 上有权限问题，故先打开普通文件
             with open(tmp_path, "wb") as f:
                 pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
-            # 原子替换（在同一文件系统上是原子的）
             os.replace(tmp_path, p)
             self.update_state(sid, last_accessed=time.time())
         finally:
-            # 清理残留 tmp（如果有）
             try:
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)

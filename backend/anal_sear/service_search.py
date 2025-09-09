@@ -158,7 +158,7 @@ def matchms_click_fn(
 
     # 3) 组装“扁平表”：Top1 带图，其它先置空（前端点击再懒加载）
     flat_rows = []
-    for q_idx, topk_list in enumerate(all_topk, 1):
+    for q_idx, topk_list in enumerate(all_topk, 0):
         for rank, (ref_spec, score, dbidx) in enumerate(topk_list, 1):
             meta = {k: v for k, v in getattr(ref_spec, "metadata", {}).items()
                     if k not in ("mz", "intensities")}

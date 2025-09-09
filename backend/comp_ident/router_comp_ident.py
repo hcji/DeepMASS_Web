@@ -2,7 +2,7 @@
 from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPException, Query
 from fastapi.responses import FileResponse
 from typing import List, Optional
-import os, shutil, tempfile, uuid, time, json, zipfile
+import os, shutil, tempfile, uuid, time, zipfile
 import pandas as pd
 import numpy as np
 from matchms import Spectrum
@@ -68,24 +68,45 @@ def _as_ref_list(x):
     # 其它类型（比如标量/字典），一律视为没有 reference
     return []
 
-# ----------------- 会话 -----------------
+# ----------------- 会话（标签页隔离） -----------------
+def _compose_sid_with_tab(sid: str, tab_id: Optional[str]) -> str:
+    """把会话 id 和 tab_id 拼成复合 key；tab_id 为空时退化为原 sid。"""
+    if tab_id:
+        return f"{sid}:{tab_id}"
+    return sid
+
 @router.get("/start-session")
 async def start_session(request: Request, response: Response):
+    # 这个接口仅负责下发/续期 cookie 的 session_id
     sid = store.get_or_create_session(request, response)
     st = store.read_state(sid)
     if not st:
         store.update_state(sid, target_zip_file_name=None, last_accessed=time.time())
     return {"status": "success", "session_id": sid}
 
-def _require_session(request: Request) -> str:
+def _require_raw_sid(request: Request) -> str:
+    """只校验 Cookie 会话存在，用于需要复合 sid 前的基础检查。"""
     sid = store.require_session(request)
     store.update_state(sid, last_accessed=time.time())
     return sid
 
+def _require_composite_sid(request: Request, tab_id: Optional[str]) -> str:
+    """返回复合 sid（sid:tab_id），并更新活跃时间。"""
+    raw_sid = store.require_session(request)
+    store.update_state(raw_sid, last_accessed=time.time())
+    return _compose_sid_with_tab(raw_sid, tab_id)
+
 # ----------------- 上传 / 测试文件 -----------------
 @router.post("/upload")
-async def upload_files(request: Request, response: Response, files: List[UploadFile] = File(...)):
-    sid = store.get_or_create_session(request, response)
+async def upload_files(
+    request: Request,
+    response: Response,
+    files: List[UploadFile] = File(...),
+    tab_id: Optional[str] = Query(None),
+):
+    raw_sid = store.get_or_create_session(request, response)
+    sid = _compose_sid_with_tab(raw_sid, tab_id)  # ★ 复合 sid（标签页隔离）
+
     if not files:
         return {"status": "error", "message": "No files"}
 
@@ -104,8 +125,9 @@ async def upload_files(request: Request, response: Response, files: List[UploadF
         if spectrums_df is None or name_df is None or len(name_df) == 0:
             return {"status": "error", "message": "File parsing failed or empty"}
 
-        # ★ DataFrame 落盘为 pickle（Store 内部已实现）
+        # ★ DataFrame 落盘为 pickle（Store 内部已实现），写入复合 sid
         store.save_df(sid, spectrums_df)
+        # ★ target_zip_file_name 也写到复合 sid 的 state 下（避免跨标签页串扰）
         store.update_state(sid, target_zip_file_name=target_zip_file_name, last_accessed=time.time())
         store.set_progress(sid, total=0, done=0, status="idle")
 
@@ -118,8 +140,9 @@ async def upload_files(request: Request, response: Response, files: List[UploadF
                 os.remove(p)
 
 @router.get("/upload-test-file")
-async def upload_test_file(request: Request, response: Response):
-    sid = store.get_or_create_session(request, response)
+async def upload_test_file(request: Request, response: Response, tab_id: Optional[str] = Query(None)):
+    raw_sid = store.get_or_create_session(request, response)
+    sid = _compose_sid_with_tab(raw_sid, tab_id)
     try:
         test_file = "analogSearch_data/test.mgf"
         if not os.path.exists(test_file):
@@ -140,8 +163,8 @@ async def download_test_file():
     return FileResponse(test_file, filename="test.mgf", media_type="text/plain")
 
 @router.get("/spectrum-list")
-async def spectrum_list(request: Request):
-    sid = _require_session(request)
+async def spectrum_list(request: Request, tab_id: Optional[str] = Query(None)):
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "No spectra"}
@@ -149,8 +172,8 @@ async def spectrum_list(request: Request):
 
 # ----------------- 进度 -----------------
 @router.get("/progress")
-async def get_progress(request: Request):
-    sid = _require_session(request)
+async def get_progress(request: Request, tab_id: Optional[str] = Query(None)):
+    sid = _require_composite_sid(request, tab_id)
     prog = store.get_progress(sid)
     return {
         "status": prog.get("status", "success"),
@@ -160,8 +183,8 @@ async def get_progress(request: Request):
 
 # ----------------- Run -----------------
 @router.post("/run")
-async def run_deepms(request: Request):
-    sid = _require_session(request)
+async def run_deepms(request: Request, tab_id: Optional[str] = Query(None)):
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "Please upload files first"}
@@ -182,8 +205,7 @@ async def run_deepms(request: Request):
             try:
                 ionmode = (s.metadata or {}).get("ionmode", "positive") or "positive"
                 sn = identify_neg(s) if str(ionmode).lower() == "negative" else identify_pos(s)
-            except Exception as ex:
-                # 记录异常到 metadata（可选），或者设置为 None
+            except Exception:
                 sn = None
 
             # 将识别结果写回 df 的对应位置（保持索引一致）
@@ -198,18 +220,22 @@ async def run_deepms(request: Request):
 
         # 全部完成
         store.set_progress(sid, total=total, done=total, status="running")
-        result = await select_spectrum(request, idx=0)
+        # ★ 注意把 tab_id 透传给 select_spectrum
+        result = await select_spectrum(request, idx=0, tab_id=tab_id)
         store.set_progress(sid, total=total, done=total, status="finished")
         return result
     except Exception as e:
         store.set_progress(sid, total=0, done=0, status="error")
         return {"status": "error", "message": f"Run failed: {e}"}
 
-
 # ----------------- 左侧点击：公式 + 信息 -----------------
 @router.get("/select-spectrum")
-async def select_spectrum(request: Request, idx: int = Query(..., ge=0)):
-    sid = _require_session(request)
+async def select_spectrum(
+    request: Request,
+    idx: int = Query(..., ge=0),
+    tab_id: Optional[str] = Query(None),
+):
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "No spectra"}
@@ -287,8 +313,9 @@ async def structures(
     spec_idx: int = Query(..., ge=0),
     formula_idx: int = Query(..., ge=0),
     highlight: bool = Query(True),   # ★ 新增：接收前端 Highlight 开关
+    tab_id: Optional[str] = Query(None),
 ):
-    sid = _require_session(request)
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "No spectra"}
@@ -354,7 +381,6 @@ async def structures(
         "ref_img": ref_img,
     }
 
-
 # ----------------- 选 Structure：参考表 + 两张结构图 -----------------
 @router.get("/reference-table")
 async def reference_table(
@@ -362,8 +388,9 @@ async def reference_table(
     spec_idx: int = Query(..., ge=0),
     structure_idx: int = Query(..., ge=0),
     highlight: bool = Query(True),   # ★ 新增
+    tab_id: Optional[str] = Query(None),
 ):
-    sid = _require_session(request)
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "No spectra"}
@@ -424,7 +451,6 @@ async def reference_table(
         "ref_img": ref_img,
     }
 
-
 # ----------------- 选 Reference：双 Plotly + 两张分子图 -----------------
 @router.get("/reference-select")
 async def reference_select(
@@ -433,8 +459,9 @@ async def reference_select(
     ref_idx: int = Query(..., ge=0),
     structure_smiles: Optional[str] = Query(None),
     highlight: bool = Query(True),   # ★ 新增
+    tab_id: Optional[str] = Query(None),
 ):
-    sid = _require_session(request)
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "No spectra"}
@@ -469,14 +496,14 @@ async def reference_select(
 
 # ----------------- 保存 CSV -> ZIP -----------------
 @router.post("/save")
-async def save_results(request: Request):
-    sid = _require_session(request)
+async def save_results(request: Request, tab_id: Optional[str] = Query(None)):
+    sid = _require_composite_sid(request, tab_id)
     df = store.load_df(sid)
     if df is None:
         return {"status": "error", "message": "No spectra"}
 
     st = store.read_state(sid)
-    target_zip_file_name = st.get("target_zip_file_name") or f"{sid}_results.zip"
+    target_zip_file_name = (st or {}).get("target_zip_file_name") or f"{sid}_results.zip"
 
     out_dir = _default_results_dir(sid)
     file_list = []
@@ -485,15 +512,17 @@ async def save_results(request: Request):
             raise RuntimeError("Missing identified results")
 
         for idx, s in enumerate(df["Identified Spectrum"]):
-            name = s.metadata.get("compound_name", f"Spectrum_{idx}")
-            csv_path = os.path.join(out_dir, f"{name}.csv")
-            ann = s.metadata.get("annotation")
+            if s is None:
+                # 允许个别失败，仍导出空表
+                ann = pd.DataFrame(columns=["Title","MolecularFormula","CanonicalSMILES","InChIKey","DeepMass Score"])
+                name = f"Spectrum_{idx}"
+            else:
+                name = s.metadata.get("compound_name", f"Spectrum_{idx}")
+                ann = s.metadata.get("annotation")
+                if ann is None:
+                    ann = pd.DataFrame(columns=["Title","MolecularFormula","CanonicalSMILES","InChIKey","DeepMass Score"])
 
-            # print("ann", ann)
-            if ann is None:
-                ann = pd.DataFrame(
-                    columns=["Title", "MolecularFormula", "CanonicalSMILES", "InChIKey", "DeepMass Score"]
-                )
+            csv_path = os.path.join(out_dir, f"{name}.csv")
             ann.to_csv(csv_path, index=True)
             file_list.append(csv_path)
 
@@ -519,11 +548,14 @@ async def download_result(path: str = Query(...)):
 
 # ----------------- 清空会话 -----------------
 @router.post("/clear")
-async def clear_session(request: Request):
-    sid = _require_session(request)
-    # 仅清 compound_identification 的数据；保留 cookie 的 session_id 供其他模块继续用
+async def clear_session(request: Request, tab_id: Optional[str] = Query(None)):
+    # 仅清 compound_identification 在“当前标签页”的数据；保留 cookie 的 session_id 供其他模块继续用
+    sid = _require_composite_sid(request, tab_id)
     store.clear_session(sid)
-    # 重新写一个空状态，避免下一次马上报 “Invalid/expired session”
-    store.update_state(sid, target_zip_file_name=None, last_accessed=time.time())
+
+    # 为避免立刻报 “Invalid/expired session”，在原始 Cookie sid 上维持活跃；不过不写任何业务数据
+    raw_sid = _require_raw_sid(request)
+    store.update_state(raw_sid, target_zip_file_name=None, last_accessed=time.time())
+
     store.set_progress(sid, total=0, done=0, status="idle")
     return {"status": "success", "message": "Cleared."}
