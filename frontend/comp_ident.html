@@ -818,19 +818,44 @@
     }
   });
 
-  btnSave.addEventListener('click', async ()=>{
+  btnSave.addEventListener('click', async ()=> {
+    // 可选：没有可保存的数据就拦截
+    // if (!currentSpecIdx /* 或你的判定条件 */) { alert('No results to save'); return; }
+
     toggleButtons(true);
+
+    // 复用进度卡片，但切换成“Saving …”
+    ensureRunCard();              // 如果还没渲染卡片，这里会创建
+    stopProgressPoll();           // 停掉运行时的轮询，避免覆盖保存状态
+
+    const titleEl = document.getElementById('runTitle');
+    const subEl   = document.getElementById('runSub');
+    const barEl   = document.getElementById('runProgressBarCard');
+    if (titleEl && subEl && barEl) {
+      titleEl.textContent = 'Saving Results…';
+      subEl.textContent   = 'Packaging files and generating download link…';
+      barEl.classList.remove('bg-danger');
+      barEl.classList.add('progress-bar-striped','progress-bar-animated');
+      barEl.style.width   = '100%';
+      barEl.textContent   = 'Saving…';
+    }
+
     try {
-      const res = await fetch(api('save'), { method: 'POST', credentials: 'include' });
+      const res  = await fetch(api('save'), { method: 'POST', credentials: 'include' });
       const data = await res.json();
+
+      welcomeMessage.style.display = "none";
+      uploadResult.style.display   = "block";
+
       if (data.status === 'success') {
-        const resultFilename = 'result_file.zip';
+        // 切到完成
+        updateRunCard(1, 1, 'finished');
+
         const dl = withTab(
           `http://deepmass.cn:8000/compound_identification/download?path=${encodeURIComponent(data.file_path)}`
         );
+        const resultFilename = 'result_file.zip';
 
-        welcomeMessage.style.display = "none";
-        uploadResult.style.display = "block";
         uploadResult.innerHTML = `
           <strong>Save successful!</strong>
           <div class="mt-2">
@@ -839,14 +864,19 @@
             </a>
           </div>`;
       } else {
-        welcomeMessage.style.display = "none";
-        uploadResult.style.display = "block";
-        uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(data.message || 'Error')}</div>`;
+        // 失败
+        updateRunCard(0, 0, 'error');
+        uploadResult.innerHTML = `
+          <strong>Save failed:</strong>
+          <div class="mt-2 text-danger">${esc(data.message || 'Error')}</div>`;
       }
     } catch (err) {
+      updateRunCard(0, 0, 'error');
       welcomeMessage.style.display = "none";
-      uploadResult.style.display = "block";
-      uploadResult.innerHTML = `<div class="text-danger">Save failed: ${esc(err.message)}</div>`;
+      uploadResult.style.display   = "block";
+      uploadResult.innerHTML = `
+        <strong>Save failed:</strong>
+        <div class="mt-2 text-danger">${esc(err.message || 'Network error')}</div>`;
     } finally {
       toggleButtons(false);
     }

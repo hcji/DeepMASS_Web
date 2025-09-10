@@ -1048,6 +1048,23 @@
     }
     toggleButtonStates(true);
 
+    // —— 复用进度卡片显示“正在保存…” ——
+    ensureRunCard();
+    // 停掉运行时的轮询，避免把“Saving…”状态顶掉
+    stopProgressPoll();
+
+    const titleEl = document.getElementById('runTitle');
+    const subEl   = document.getElementById('runSub');
+    const barEl   = document.getElementById('runProgressBarCard');
+    if (titleEl && subEl && barEl) {
+      titleEl.textContent = 'Saving Results…';
+      subEl.textContent   = 'Packaging files and generating download link…';
+      barEl.classList.remove('bg-danger');
+      barEl.classList.add('progress-bar-striped','progress-bar-animated');
+      barEl.style.width = '100%';
+      barEl.textContent = 'Saving…';
+    }
+
     let threshold = parseFloat(document.getElementById("thresholdInput").value);
     if (isNaN(threshold)) threshold = 0.0;
 
@@ -1057,29 +1074,42 @@
     formData.append("threshold", threshold);
 
     try {
-      const res = await fetch(api('save-results'), {
+      const res  = await fetch(api('save-results'), {
         method: "POST",
         body: formData,
         credentials: "include"
       });
       const data = await res.json();
+
       uploadResult.style.display = "block";
+      welcomeMessage.style.display = "none";
+
       if (data.status === "success") {
-        const xlsxFilename = data.file_path.split('/').pop();
+        // 切到“Completed”
+        updateRunCard(1, 1, 'finished', 'Save completed.');
+        const xlsxFilename = (data.file_path || '').split('/').pop() || 'result.xlsx';
+        const dlHref = api(`download-result-file?file_path=${encodeURIComponent(data.file_path)}`);
+
         uploadResult.innerHTML = `
           <strong>Save successful!</strong>
           <div class="mt-2">
-            <a href="${api(`download-result-file?file_path=${encodeURIComponent(data.file_path)}`)}"
-               download="${xlsxFilename}" class="btn btn-primary btn-sm">
+            <a href="${dlHref}" download="${xlsxFilename}" class="btn btn-primary btn-sm">
               <i class="bi bi-download me-1"></i> Download result file
             </a>
           </div>`;
       } else {
-        uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${data.message}</div>`;
+        // 失败提示 + 红条
+        updateRunCard(0, 0, 'error', data.message || 'Save failed');
+        uploadResult.innerHTML = `
+          <strong>Save failed:</strong>
+          <div class="mt-2 text-danger">${data.message || 'Error'}</div>`;
       }
     } catch (err) {
+      updateRunCard(0, 0, 'error', err.message || 'Network error');
       uploadResult.style.display = "block";
-      uploadResult.innerHTML = `<strong>Save failed:</strong><div class="mt-2 text-danger">${err.message}</div>`;
+      uploadResult.innerHTML = `
+        <strong>Save failed:</strong>
+        <div class="mt-2 text-danger">${err.message || 'Network error'}</div>`;
     } finally {
       toggleButtonStates(false);
     }
