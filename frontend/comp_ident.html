@@ -430,7 +430,7 @@
     uploadResult.style.display = "block";
     if (!document.getElementById('runProgressCard')) {
       uploadResult.innerHTML = `
-        <strong id="runTitle">Running DeepMASS…</strong>
+        <strong id="runTitle">Running Compound Identification…</strong>
         <div class="mt-1 small text-muted" id="runSub">Initializing…</div>
         <div class="progress mt-2" id="runProgressCard" style="height:20px;">
           <div id="runProgressBarCard"
@@ -452,7 +452,7 @@
       bar.style.width = pct + '%';
       bar.textContent = pct + '%';
       if (pct < 100) {
-        title.textContent = 'Running DeepMASS…';
+        title.textContent = 'Running Compound Identification…';
         sub.textContent   = `Processing ${done}/${total}`;
       } else {
         title.textContent = 'Finalizing…';
@@ -493,7 +493,7 @@
           headers: { 'Cache-Control': 'no-cache' }
         });
         const d   = await res.json();
-        updateRunCard(d.total ?? 0, d.done ?? 0, d.status ?? 'success');
+        updateRunCard(d.total ?? 0, d.done ?? 0, d.status ?? 'running');
         if (d.status === 'finished' || d.status === 'error') stopProgressPoll();
       } catch {
         stopProgressPoll();
@@ -734,10 +734,10 @@
         await refreshList();
         const first = document.querySelector('#spectrum-list a.list-group-item'); if (first) { first.click(); showSpectrumTab(); }
       } else {
-        uploadResult.innerHTML = `<div class="text-danger">Upload failed: ${esc(data.message || 'Error')}</div>`;
+        uploadResult.innerHTML = `<div class="text-danger">${esc(data.message || 'Upload failed')}</div>`;
       }
     } catch (err) {
-      uploadResult.innerHTML = `<div class="text-danger">Upload failed: ${esc(err.message)}</div>`;
+      uploadResult.innerHTML = `<div class="text-danger">${esc(data.message || 'Upload failed')}</div>`;
     } finally { toggleButtons(false); }
   });
 
@@ -763,26 +763,59 @@
     } finally { toggleButtons(false); }
   });
 
-  btnRun.addEventListener('click', async ()=>{
+  btnRun.addEventListener('click', async ()=> {
     toggleButtons(true);
     ensureRunCard();
     startProgressPoll();
     try {
-      const res = await fetch(api('run'), {method:'POST', credentials:'include'});
+      const res  = await fetch(api('run'), { method:'POST', credentials:'include' });
       const data = await res.json();
+
       if (data.status === 'success') {
+        // 1) 刷新列表并默认打开第一个谱图
         await refreshList();
-        const first = document.querySelector('#spectrum-list a.list-group-item'); if (first) first.click();
+        const first = document.querySelector('#spectrum-list a.list-group-item');
+        if (first) first.click();
         showSpectrumTab();
-      } else {
-        updateRunCard(0, 0, 'error');
-        alert('Run failed: ' + (data.message || 'Error'));
+
+        // 2) 收尾：把进度卡片切到 Completed，并停止轮询
+        updateRunCard(1, 1, 'finished');
         stopProgressPoll();
+
+        // 3) 和 anal_sear 一样插入成功提示
+        welcomeMessage.style.display = "none";
+        uploadResult.style.display   = "block";
+        uploadResult.innerHTML = `
+          <strong>Run successful:</strong>
+          <div class="mt-2">${esc(data.message || 'All spectrums processed.')}</div>
+        `;
+      } else {
+        // 失败路径
+        updateRunCard(0, 0, 'error');
+        stopProgressPoll();
+
+        welcomeMessage.style.display = "none";
+        uploadResult.style.display   = "block";
+        uploadResult.innerHTML = `
+          <strong>Run failed:</strong>
+          <div class="mt-2 text-danger">${esc(data.message || 'Error')}</div>
+        `;
+        alert('Run failed: ' + (data.message || 'Error'));
       }
-    } catch {
+    } catch (err) {
+      // 异常路径
       updateRunCard(0, 0, 'error');
       stopProgressPoll();
-    } finally { toggleButtons(false); }
+
+      welcomeMessage.style.display = "none";
+      uploadResult.style.display   = "block";
+      uploadResult.innerHTML = `
+        <strong>Request failed:</strong>
+        <div class="mt-2 text-danger">${esc(err.message || 'Network error')}</div>
+      `;
+    } finally {
+      toggleButtons(false);
+    }
   });
 
   btnSave.addEventListener('click', async ()=>{

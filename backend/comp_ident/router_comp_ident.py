@@ -215,8 +215,8 @@ async def run_deepms(request: Request, tab_id: Optional[str] = Query(None)):
             store.set_progress(sid, total=total, done=i + 1, status="running")
 
             # 只间隔性落盘，减少IO
-            if (i + 1) % 50 == 0 or (i + 1) == total:
-                store.save_df(sid, df)
+            # if (i + 1) % 50 == 0 or (i + 1) == total:
+        store.save_df(sid, df)
 
         # 全部完成
         store.set_progress(sid, total=total, done=total, status="running")
