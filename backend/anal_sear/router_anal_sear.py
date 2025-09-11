@@ -125,26 +125,39 @@ async def get_session_scope(request: Request, tab_id: Optional[str] = Query(None
 async def process_spectrums_background(file_path, pos_model_path, neg_model_path, out_dir, scope_key):
     try:
         print(f"[BG] Start building custom DB for scope={scope_key}, file={file_path}")
-        if not os.path.splitext(file_path)[1].lower() in ['.mgf', '.msp', '.mat']:
-            raise HTTPException(status_code=400, detail=f"Invalid file format: {file_path}")
+        suffix = os.path.splitext(file_path)[1].lower()
+        if suffix not in ['.mgf', '.msp', '.mat']:
+            msg = f"Invalid file format: {suffix}"
+            store.update_state(scope_key, status="error", status_message=msg, filename=os.path.basename(file_path))
+            return
+
         specs = load_spectrum_file(file_path)
         if not specs:
-            raise HTTPException(status_code=400, detail="No valid spectra found in file")
+            msg = "No valid spectra found in file"
+            store.update_state(scope_key, status="error", status_message=msg, filename=os.path.basename(file_path))
+            return
 
-        for s in specs:
+        # 校验 + 纠错（缺 ionmode → 默认 positive）
+        defaulted_ionmode = 0
+        for i, s in enumerate(specs, start=1):
+            if not (hasattr(s, "peaks") and s.peaks.mz.size and s.peaks.intensities.size):
+                msg = f"Spectrum #{i} missing peaks or intensities"
+                store.update_state(scope_key, status="error", status_message=msg, filename=os.path.basename(file_path))
+                return
             if not s.metadata.get("ionmode"):
-                raise HTTPException(status_code=400, detail="Missing ionmode in spectrum metadata")
-            if not s.peaks.mz.size or not s.peaks.intensities.size:
-                raise HTTPException(status_code=400, detail="Spectrum missing peaks or intensities")
-
+                s.set("ionmode", "positive")
+                defaulted_ionmode += 1
+                
         positive_specs, negative_specs = [], []
         for index, s in enumerate(specs):
             s.set("database_index", index)
-            mode = s.metadata.get("ionmode", "positive")
+            mode = (s.metadata.get("ionmode") or "positive").lower()
             (negative_specs if mode == "negative" else positive_specs).append(s)
 
         if not positive_specs and not negative_specs:
-            raise HTTPException(status_code=400, detail="No spectrum data detected in file")
+            msg = "No spectrum data detected in file"
+            store.update_state(scope_key, status="error", status_message=msg, filename=os.path.basename(file_path))
+            return
 
         os.makedirs(out_dir, exist_ok=True)
         positive_pkl = os.path.join(out_dir, "references_spectrums_positive.pickle")
@@ -156,11 +169,11 @@ async def process_spectrums_background(file_path, pos_model_path, neg_model_path
 
         def build_index(pkl_path, model_path, dim=300, prefix="positive"):
             if not os.path.exists(model_path):
-                raise HTTPException(status_code=500, detail=f"Model file not found: {model_path}")
+                raise RuntimeError(f"Model file not found: {model_path}")
             with open(pkl_path, "rb") as f:
                 refs = pickle.load(f)
             if not refs:
-                raise HTTPException(status_code=400, detail=f"No {prefix} spectra available for indexing")
+                raise RuntimeError(f"No {prefix} spectra available for indexing")
             model = gensim.models.Word2Vec.load(model_path)
             vectors = []
             for s in tqdm(refs, desc=f"Vectorizing {prefix}"):
@@ -168,10 +181,10 @@ async def process_spectrums_background(file_path, pos_model_path, neg_model_path
                     v = calc_vector(model, SpectrumDocument(s, n_decimals=2), allowed_missing_percentage=100)
                     vectors.append(v)
                 except Exception as e:
-                    print(f"Error vectorizing spectrum: {str(e)}")
+                    print(f"[BG] vectorize error: {e}")
                     continue
             if not vectors:
-                raise HTTPException(status_code=400, detail=f"No valid vectors generated for {prefix} spectra")
+                raise RuntimeError(f"No valid vectors generated for {prefix} spectra")
             xb = np.array(vectors, dtype="float32")
             xb /= np.linalg.norm(xb, axis=1, keepdims=True)
             idxs = np.arange(len(xb))
@@ -186,6 +199,11 @@ async def process_spectrums_background(file_path, pos_model_path, neg_model_path
         positive_idx = build_index(positive_pkl, pos_model_path, prefix="positive") if positive_specs else None
         negative_idx = build_index(negative_pkl, neg_model_path, prefix="negative") if negative_specs else None
 
+        # 成功 + 告警信息
+        warn_part = ""
+        if defaulted_ionmode > 0:
+            warn_part = f" (Note: {defaulted_ionmode} spectrum(s) with missing ionmode were set to 'positive')"
+
         store.update_state(
             scope_key,
             references_positive_path=positive_pkl if os.path.exists(positive_pkl) else None,
@@ -194,13 +212,18 @@ async def process_spectrums_background(file_path, pos_model_path, neg_model_path
             hnsw_negative_path=os.path.join(out_dir, "references_index_negative_spec2vec.bin") if negative_idx else None,
             custom_database_path=out_dir,
             status="success",
-            status_message=f"Custom database initialized successfully",
+            status_message=f"Custom database initialized successfully{warn_part}",
+            filename=os.path.basename(file_path),
         )
-        print(f"[BG] Custom DB built OK for scope={scope_key}")
+        print(f"[BG] Custom DB built OK for scope={scope_key}{warn_part}")
+
     except Exception as e:
-        print(f"[BG] Error for scope {scope_key}: {str(e)}")
-        store.update_state(scope_key, status="error", status_message=f"Custom database processing failed: {str(e)}")
-        raise
+        msg = f"Custom database processing failed: {e}"
+        print(f"[BG] Error for scope {scope_key}: {msg}")
+        # 把异常也写给前端
+        store.update_state(scope_key, status="error", status_message=msg, filename=os.path.basename(file_path))
+        # 不要再 raise，避免“response already started”之类的噪音
+        return
 
 # =========================
 # 路由
