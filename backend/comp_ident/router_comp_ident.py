@@ -105,7 +105,7 @@ async def upload_files(
     tab_id: Optional[str] = Query(None),
 ):
     raw_sid = store.get_or_create_session(request, response)
-    sid = _compose_sid_with_tab(raw_sid, tab_id)  # ★ 复合 sid（标签页隔离）
+    sid = _compose_sid_with_tab(raw_sid, tab_id)
 
     if not files:
         return {"status": "error", "message": "No files"}
@@ -125,10 +125,17 @@ async def upload_files(
         if spectrums_df is None or name_df is None or len(name_df) == 0:
             return {"status": "error", "message": "File parsing failed or empty"}
 
-        # ★ DataFrame 落盘为 pickle（Store 内部已实现），写入复合 sid
         store.save_df(sid, spectrums_df)
-        # ★ target_zip_file_name 也写到复合 sid 的 state 下（避免跨标签页串扰）
-        store.update_state(sid, target_zip_file_name=target_zip_file_name, last_accessed=time.time())
+
+        # ★ 关键：统一导出名 = 第一个原始文件名 + ".zip"
+        original_names = [f.filename for f in files]
+        zip_name = f"{original_names[0]}.zip" if original_names else (target_zip_file_name or f"{sid}.zip")
+        store.update_state(
+            sid,
+            target_zip_file_name=zip_name,
+            original_filenames=original_names,
+            last_accessed=time.time()
+        )
         store.set_progress(sid, total=0, done=0, status="idle")
 
         return {"status": "success", "names": name_df.to_dict(), "message": "Upload Successful!"}
@@ -147,9 +154,16 @@ async def upload_test_file(request: Request, response: Response, tab_id: Optiona
         test_file = "analogSearch_data/test.mgf"
         if not os.path.exists(test_file):
             return {"status": "error", "message": "Test file not found"}
-        spectrums_df, name_df, target_zip_file_name = load_files([test_file])
+        spectrums_df, name_df, _ = load_files([test_file])
         store.save_df(sid, spectrums_df)
-        store.update_state(sid, target_zip_file_name=target_zip_file_name, last_accessed=time.time())
+
+        # ★ 关键：固定导出 zip 名
+        store.update_state(
+            sid,
+            target_zip_file_name="test.mgf.zip",
+            original_filenames=["test.mgf"],
+            last_accessed=time.time()
+        )
         store.set_progress(sid, total=0, done=0, status="idle")
         return {"status": "success", "names": name_df.to_dict(), "message": "Test file ready"}
     except Exception as e:

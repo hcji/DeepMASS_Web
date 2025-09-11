@@ -96,10 +96,15 @@ class Store:
         return json.loads(raw.decode("utf-8")) if raw else {}
 
     def update_state(self, sid: str, **fields):
-        st = self.read_state(sid)
-        st.update(fields)
+        """
+        读出 state（可能为空），合并传入字段，并刷新 last_accessed。
+        """
+        st = self.read_state(sid) or {}
+        if fields:
+            st.update(fields)
         st["last_accessed"] = time.time()
         self._write_state(sid, st)
+        return st
 
     # --------- 进度 ---------
     def set_progress(self, sid: str, *, total: int, done: int, status: str, message: Optional[str] = None):

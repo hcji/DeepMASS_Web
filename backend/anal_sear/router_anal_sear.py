@@ -309,7 +309,8 @@ async def upload_file(
         if spectrums_df is None or name_list is None or len(name_list) == 0:
             return {"status": "error", "message": "File parsing failed, possibly empty or incorrect format"}
 
-        store.update_state(scope_key)
+        # ★ 关键：记录原始文件名，供后续 /save-results 生成 <原文件名>.zip
+        store.update_state(scope_key, last_uploaded_original=file.filename)
 
         return {
             "status": "success",
@@ -332,7 +333,10 @@ async def upload_test_file(session_scope: Dict[str, Any] = Depends(get_session_s
         if not os.path.exists(test_file_path):
             return {"status": "error", "message": f"Test file does not exist: {test_file_path}"}
         spectrums_df, name_list, _ = load_files([test_file_path])
-        store.update_state(scope_key)
+
+        # ★ 关键：记录测试原始名
+        store.update_state(scope_key, last_uploaded_original=os.path.basename(test_file_path))
+
         return {
             "status": "success",
             "names": name_list.to_dict(),
@@ -503,7 +507,7 @@ async def run_analysis(
 @router.post("/save-results")
 async def save_results(
     state_uuid: Optional[str] = Form(None),
-    target_zip_file_name: Optional[str] = Form(None),
+    target_zip_file_name: Optional[str] = Form(None),  # 保留参数但不再用于命名
     threshold: Optional[float] = Form(None),
     session_scope: Dict[str, Any] = Depends(get_session_scope)
 ):
@@ -522,14 +526,11 @@ async def save_results(
         if result_state is None or "spectrum" not in result_state.columns or "annotation" not in result_state.columns:
             raise HTTPException(status_code=400, detail="Invalid result_state")
 
-        dir_path = os.path.join(TMP_DIR, safe_scope, uuid.uuid4().hex)
-        os.makedirs(dir_path, exist_ok=True)
-
-        if not target_zip_file_name:
-            target_zip_file_name = f"{safe_scope}_results.xlsx"
-        base, _ = os.path.splitext(target_zip_file_name)
-        xlsx_filename = base + ".xlsx"
-        xlsx_path = os.path.join(dir_path, xlsx_filename)
+        # 生成明细文件
+        out_dir = os.path.join(TMP_DIR, safe_scope, uuid.uuid4().hex)
+        os.makedirs(out_dir, exist_ok=True)
+        detail_basename = "analysis_results.xlsx"
+        detail_path = os.path.join(out_dir, detail_basename)
 
         # 汇总所有 topK
         all_rows = []
@@ -545,44 +546,41 @@ async def save_results(
                 all_rows.append(row_dict)
 
         if not all_rows:
-            empty_df = pd.DataFrame(columns=["compoundName-index", "StructSimScore", "database_index", "smiles"])
-            try:
-                empty_df.to_excel(xlsx_path, index=False)
-                return {"status": "success", "message": "No valid results found, saved empty Excel", "file_path": xlsx_path}
-            except Exception:
-                csv_path = os.path.join(dir_path, base + ".csv")
-                empty_df.to_csv(csv_path, index=False)
-                return {"status": "success", "message": "No valid results found, saved empty CSV", "file_path": csv_path}
-
-        df = pd.DataFrame(all_rows)
-        if threshold is not None:
-            df = df[pd.to_numeric(df.get("StructSimScore", np.nan), errors="coerce").fillna(-np.inf) >= float(threshold)]
-
-        if df.empty:
-            keep_cols = ["compoundName-index", "StructSimScore", "database_index", "smiles"]
-            for col in keep_cols:
-                if col not in df.columns:
-                    df[col] = pd.Series(dtype=object)
-            df = df[keep_cols]
-            try:
-                df.to_excel(xlsx_path, index=False)
-                return {"status": "success", "message": f"No candidates matched threshold ≥ {threshold}, saved empty Excel", "file_path": xlsx_path}
-            except Exception:
-                csv_path = os.path.join(dir_path, base + ".csv")
-                df.to_csv(csv_path, index=False)
-                return {"status": "success", "message": f"No candidates matched threshold ≥ {threshold}, saved empty CSV", "file_path": csv_path}
+            df = pd.DataFrame(columns=["compoundName-index", "StructSimScore", "database_index", "smiles"])
+        else:
+            df = pd.DataFrame(all_rows)
+            if threshold is not None:
+                df = df[pd.to_numeric(df.get("StructSimScore", np.nan), errors="coerce").fillna(-np.inf) >= float(threshold)]
+            if df.empty:
+                keep_cols = ["compoundName-index", "StructSimScore", "database_index", "smiles"]
+                for col in keep_cols:
+                    if col not in df.columns:
+                        df[col] = pd.Series(dtype=object)
+                df = df[keep_cols]
 
         try:
-            df.to_excel(xlsx_path, index=False)
-            return {"status": "success", "message": "Results saved successfully", "file_path": xlsx_path}
-        except Exception as e:
-            csv_path = os.path.join(dir_path, base + ".csv")
-            df.to_csv(csv_path, index=False)
-            return {"status": "success", "message": f"Excel writer not available, saved CSV instead: {e}", "file_path": csv_path}
+            df.to_excel(detail_path, index=False)
+        except Exception:
+            # 回退 CSV
+            detail_basename = "analysis_results.csv"
+            detail_path = os.path.join(out_dir, detail_basename)
+            df.to_csv(detail_path, index=False)
 
+        # ★ 关键：zip 名 = 原文件名（含原后缀） + ".zip"
+        st = store.read_state(scope_key) or {}
+        original_name = st.get("last_uploaded_original") or "results"
+        zip_name = f"{original_name}.zip"
+        zip_path = os.path.join(out_dir, zip_name)
+
+        import zipfile
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
+            z.write(detail_path, arcname=os.path.basename(detail_path))
+
+        return {"status": "success", "message": "Results saved successfully", "file_path": zip_path}
     except Exception as e:
         print(f"[save-results] error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to save results: {str(e)}")
+
 
 @router.get("/download-result-file")
 async def download_result_file(
