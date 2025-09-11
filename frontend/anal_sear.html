@@ -527,6 +527,7 @@
     btnTestFile.disabled = disable;
     btnRun.disabled = disable || (dbCustom.checked && !customDbFileName.textContent.includes("Processed successfully"));
     btnSave.disabled = disable;
+    btnClear.disabled = disable;
     btnUploadFile.innerHTML = disable ? `<i class="bi bi-upload me-1"></i> Upload File (Processing...)` : `<i class="bi bi-upload me-1"></i> Upload File`;
     btnTestFile.innerHTML = disable ? `<i class="bi bi-file-earmark-text me-1"></i> Test File (Processing...)` : `<i class="bi bi-file-earmark-text me-1"></i> Test File`;
     btnRun.innerHTML = disable ? `<i class="bi bi-hourglass-split me-1"></i> Running...` : `<i class="bi bi-play-circle me-1"></i> Run Searching`;
