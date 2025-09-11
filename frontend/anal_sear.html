@@ -687,9 +687,11 @@
   // 自定义库轮询
   function startCustomDbPolling(filename, fileSizeMB) {
     if (pollingInterval) clearInterval(pollingInterval);
-    const POLLING_TIMEOUT = fileSizeMB > 100 ? 15 * 60 * 1000 : 10 * 60 * 1000;
+    const TIMEOUT_HOURS   = 6;
+    const POLLING_TIMEOUT = TIMEOUT_HOURS * 60 * 60 * 1000;  // 6h
+
     let startTs = Date.now();
-    customDbFileName.textContent = `Processing custom database: ${filename} (may take a few minutes)...`;
+    customDbFileName.textContent = `Processing custom database: ${filename} (may take a while)...`;
     btnRun.disabled = true;
 
     pollingInterval = setInterval(async () => {
@@ -699,7 +701,8 @@
         uploadCustomDb.value = null;
         uploadResult.style.display = "block";
         welcomeMessage.style.display = "none";
-        uploadResult.innerHTML = `<strong>Processing failed:</strong><div class="mt-2 text-danger">Processing timed out after ${fileSizeMB > 100 ? 15 : 10} minutes</div>`;
+        uploadResult.innerHTML = `<strong>Processing failed:</strong>
+          <div class="mt-2 text-danger">Processing timed out after ${TIMEOUT_HOURS} hours</div>`;
         btnRun.disabled = false; toggleButtonStates(false);
         return;
       }
@@ -753,6 +756,23 @@
     const file = e.target.files[0];
     if (!file) return;
 
+  // ★ 新增：前端校验（后缀 + 大小）
+  const sizeMB  = file.size / (1024 * 1024);
+  const suffix  = file.name.split('.').pop().toLowerCase();
+  const allow   = ['mgf','msp','mat'];
+  const MAX_MB  = 100; // 限制在100 MB
+
+  if (!allow.includes(suffix)) {
+    alert("Unsupported file format, only .mgf, .msp, .mat are supported.");
+    uploadInput.value = null;
+    return;
+  }
+  if (sizeMB > MAX_MB) {
+    alert(`File too large, maximum supported size is ${MAX_MB} MB.`);
+    uploadInput.value = null;
+    return;
+  }
+    
     isTestFileSelected = false;
     currentUploadFile = file;
     currentUuidFilename = null;
