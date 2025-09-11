@@ -385,14 +385,14 @@
       ? rows.map(r=>`<tr><td>${cellHTML(r.key ?? "")}</td><td>${cellHTML(r.value ?? "")}</td></tr>`).join('')
       : `<tr><td colspan="2" class="text-center">No information</td></tr>`;
   }
-  function renderFormulaTable(rows) {
+  function renderFormulaTable(rows, showEmpty = true) {
     formulaTbody.innerHTML = rows.length
       ? rows.map((r,i)=>`<tr data-index="${i}">
-           <td>${cellHTML(r["Formula"]??"")}</td>
-           <td>${cellHTML(r["mass"]??"")}</td>
-           <td>${cellHTML(r["error (mDa)"]??"")}</td>
-         </tr>`).join('')
-      : `<tr><td colspan="3" class="text-center">No formulas</td></tr>`;
+          <td>${cellHTML(r["Formula"]??"")}</td>
+          <td>${cellHTML(r["mass"]??"")}</td>
+          <td>${cellHTML(r["error (mDa)"]??"")}</td>
+        </tr>`).join('')
+      : (showEmpty ? `<tr><td colspan="3" class="text-center">No formulas</td></tr>` : '');
   }
 
   const cellTooltip = document.getElementById('cellTooltip');
@@ -585,7 +585,8 @@
     if (data.status !== 'success') { alert(data.message||'Error'); return; }
     renderInfoTable(data.information_table || []);
     const frows = data.formula_table || [];
-    renderFormulaTable(frows);
+    const showEmptyPlaceholder = !data.need_run;  // 仅在非 need_run（跑完）时显示“ No formulas ”
+    renderFormulaTable(frows, showEmptyPlaceholder);
     highlightRow('#formula-finder-table', 0);
 
     if (data.need_run) {
