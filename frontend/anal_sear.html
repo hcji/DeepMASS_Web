@@ -126,6 +126,15 @@
     text-align: left !important;
   }
 
+  #sidebar #spectrum-list a.list-group-item.list-group-item-action.active,
+  #sidebar #spectrum-list a.list-group-item.list-group-item-action.active:hover,
+  #sidebar #spectrum-list a.list-group-item.list-group-item-action.active:focus {
+    background-color: #d7eaff !important; /* 悬停时的蓝色 */
+    color: #333 !important;           /* 深蓝色字体 */
+    border: none !important;             /* 去掉边框 */
+    box-shadow: none !important;         /* 去掉阴影 */
+  }
+  
 </style>
 </head>
 <body>
@@ -835,12 +844,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             a.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${name}`;
             a.dataset.index = index;
             a.addEventListener("click", (ev)=>{ 
-              ev.preventDefault(); 
+              ev.preventDefault();
+              // 移除所有 .list-group-item 的 .active 类
+              document.querySelectorAll("#spectrum-list .list-group-item").forEach(item => {
+                item.classList.remove("active");
+              });
+              // 为当前点击的项添加 .active 类
+              a.classList.add("active");
               // 0 起始
               renderTopKForQuery(index);
             });
             spectrumList.appendChild(a);
           });
+          // 默认选中第一个可见项
+          const firstA = spectrumList.querySelector('.list-group-item');
+          if (firstA) {
+            firstA.classList.add('active');
+          }          
         }
       } else {
         currentUploadFile = null; currentUuidFilename = null;
@@ -888,12 +908,23 @@ document.addEventListener("DOMContentLoaded", async () => {
           a.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${name}`;
           a.dataset.index = index;
           a.addEventListener("click", (ev)=>{ 
-            ev.preventDefault(); 
+            ev.preventDefault();
+            // 移除所有 .list-group-item 的 .active 类
+            document.querySelectorAll("#spectrum-list .list-group-item").forEach(item => {
+              item.classList.remove("active");
+            });
+            // 为当前点击的项添加 .active 类
+            a.classList.add("active");
             // 0 起始
             renderTopKForQuery(index);
           });
           spectrumList.appendChild(a);
         });
+        // 默认选中第一个可见项
+        const firstA = spectrumList.querySelector('.list-group-item');
+        if (firstA) {
+          firstA.classList.add('active');
+        }
       } else {
         spectrumList.innerHTML = "";
         uploadResult.innerHTML += `<div class="text-danger mt-2">Error: ${data.message}</div>`;

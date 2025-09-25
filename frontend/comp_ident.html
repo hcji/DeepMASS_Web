@@ -81,6 +81,15 @@
       .table td, .table th { font-size:12px; padding:8px 12px; }
       .plot-placeholder .label-text { font-size:12px; top:6px; left:6px; }
     }
+
+  #sidebar #spectrum-list a.list-group-item.list-group-item-action.active,
+  #sidebar #spectrum-list a.list-group-item.list-group-item-action.active:hover,
+  #sidebar #spectrum-list a.list-group-item.list-group-item-action.active:focus {
+    background-color: #d7eaff !important; /* 悬停时的蓝色 */
+    color: #333 !important;           /* 深蓝色字体 */
+    border: none !important;             /* 去掉边框 */
+    box-shadow: none !important;         /* 去掉阴影 */
+  }    
   </style>
 </head>
 <body>
@@ -566,7 +575,16 @@
       a.className = "list-group-item list-group-item-action";
       a.dataset.index = idx;
       a.innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${esc(name)}`;
-      a.addEventListener("click", (e)=>{ e.preventDefault(); onSpectrumClick(idx); });
+      a.addEventListener("click", (e)=>{
+        e.preventDefault();
+        // 移除所有 .list-group-item 的 .active 类
+        document.querySelectorAll("#spectrum-list .list-group-item").forEach(item => {
+          item.classList.remove("active");
+        });
+        // 为当前点击的项添加 .active 类
+        a.classList.add("active");
+
+        onSpectrumClick(idx); });
       spectrumList.appendChild(a);
     });
   }
