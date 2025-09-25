@@ -10,6 +10,7 @@ from backend.service.user_service import UserService
 
 from backend.anal_sear import router_anal_sear
 from backend.comp_ident import router_comp_ident
+from backend.utils.auth_router import router as auth_router
 
 engine = create_engine("sqlite:///./User_Information.db", echo=True)
 Base = declarative_base()
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth_router)
 app.include_router(router_anal_sear.router)
 app.include_router(router_comp_ident.router)
 class Register(BaseModel):

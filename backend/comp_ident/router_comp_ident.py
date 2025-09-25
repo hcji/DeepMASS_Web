@@ -1,5 +1,5 @@
 # backend/comp_ident/router_comp_ident.py
-from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
 from typing import List, Optional
 import os, shutil, tempfile, uuid, time, zipfile
@@ -13,8 +13,9 @@ from backend.comp_ident.plot_utils import plot_2_spectrum, plot_2_mol, get_formu
 
 # 与 anal_sear 共用 Cookie（会话在 Redis，小数据状态存 Redis；大对象 DataFrame 落盘为 pickle）
 from backend.service.session_store import Store
+from backend.service.auth_deps import require_user
 
-router = APIRouter(prefix="/compound_identification", tags=["compound_identification"])
+router = APIRouter(prefix="/compound_identification", tags=["compound_identification"], dependencies=[Depends(require_user)])
 
 # 会话：Cookie 名与 anal_sear 一致；namespace 区分模块；pickle 文件根目录 base_dir
 store = Store(

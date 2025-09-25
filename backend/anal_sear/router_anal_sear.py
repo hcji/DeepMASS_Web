@@ -21,6 +21,7 @@ from backend.anal_sear.plot_utils import build_plots_for_pair
 from backend.service.session_store import Store  # ★ 使用统一的 Store
 
 import json
+from backend.service.auth_deps import require_user  # ★ 新增
 
 # =========================
 # 统一 Store（与 comp_ident 共用 Redis / Cookie）
@@ -38,7 +39,11 @@ store = Store(
 # =========================
 # 路由 & 常量
 # =========================
-router = APIRouter(prefix="/anal_search", tags=["anal_search"])
+router = APIRouter(
+    prefix="/anal_search",
+    tags=["anal_search"],
+    dependencies=[Depends(require_user)]  # ★ 统一保护所有 anal_search 接口
+)
 
 MODEL_POS_PATH = 'model/Ms2Vec_allGNPSpositive.hdf5'
 MODEL_NEG_PATH = 'model/Ms2Vec_allGNPSnegative.hdf5'

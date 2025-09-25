@@ -265,6 +265,33 @@
 <div id="cellTooltip" class="cell-tooltip"></div>
 
 <script>
+
+  const API_BASE = 'http://deepmass.cn:8000';
+
+  async function checkLoginOrRedirect() {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const next = encodeURIComponent(location.href);
+        location.href = `login.html?next=${next}`;
+        return false;
+      }
+      return true;
+    } catch {
+      const next = encodeURIComponent(location.href);
+      location.href = `login.html?next=${next}`;
+      return false;
+    }
+  }
+
+  (async () => {
+    const ok = await checkLoginOrRedirect();
+    if (!ok) return;             // not logged in, we redirected
+  })();
+
   // ========== 每个标签页唯一 TAB_ID + URL 附加工具 ==========
   function uuidv4() {
     return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>

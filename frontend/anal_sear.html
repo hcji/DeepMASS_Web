@@ -367,6 +367,26 @@
 
 </div>
 <script>
+
+  const API_BASE = 'http://deepmass.cn:8000';
+
+  async function checkLoginOrRedirect() {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include', cache: 'no-store' });
+      if (!res.ok) {
+        // 未登录：带 next 返回此页
+        const next = encodeURIComponent(location.href);
+        location.href = `login.html?next=${next}`;
+        return false;
+      }
+      return true;
+    } catch {
+      const next = encodeURIComponent(location.href);
+      location.href = `login.html?next=${next}`;
+      return false;
+    }
+  }
+
   // === 每个标签页一个 TAB_ID（仅此标签页可见）===
   function _uuid() {
     if (crypto.randomUUID) return crypto.randomUUID();
@@ -747,10 +767,13 @@
     }, 5000);
   }
 
-  // —— 事件绑定 —— 
-  document.addEventListener("DOMContentLoaded", async () => {
-    await ensureSession(); // 触发服务端下发 Cookie
-  });
+  // —— 事件绑定 ——
+document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await checkLoginOrRedirect();  // 先查 /auth/me，未登录跳 login.html
+  if (!ok) return;
+  await ensureSession();                    // 登录后再调 /anal_search/start-session
+});
+
 
   btnUploadFile.addEventListener("click", async () => {
     uploadInput.value = null;
