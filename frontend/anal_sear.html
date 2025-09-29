@@ -19,6 +19,11 @@
 
 <link rel="stylesheet" href="deepmass.css" />
 <style>
+
+  /* 默认隐藏页面 */
+  body {
+    display: none;
+  }
   #result-table.table-responsive {
     max-height: 300px;
     overflow-y: auto;
@@ -138,6 +143,10 @@
 </style>
 </head>
 <body>
+<div id="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 16px; color: #333;">
+    Loading...
+</div>
+
 <div class="top custom-navbar text-white py-2 px-3 d-flex align-items-center">
   <div class="navbar-header me-3">
     <a class="navbar-brand text-white fw-bold" data-no-turbolink="true" href="http://deepmass.cn/comp_ident/" style="font-size: 28px;">DeepMass</a>
@@ -376,14 +385,16 @@
 
 </div>
 <script>
-
   const API_BASE = 'http://deepmass.cn:8000';
 
   async function checkLoginOrRedirect() {
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include', cache: 'no-store' });
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' } // 添加防缓存头
+      });
       if (!res.ok) {
-        // 未登录：带 next 返回此页
         const next = encodeURIComponent(location.href);
         location.href = `login.html?next=${next}`;
         return false;
@@ -396,6 +407,22 @@
     }
   }
 
+  // 初始化逻辑
+  (async () => {
+    const ok = await checkLoginOrRedirect();
+    if (!ok) return;
+
+    // 显示页面
+    document.body.style.display = 'block';
+    const loading = document.getElementById('loading');
+    if (loading) loading.style.display = 'none';
+
+    // 初始化
+    await ensureSession();
+    toggleButtonStates(false);
+    dbDefault.dispatchEvent(new Event('change')); // 触发默认数据库选择
+  })();
+    
   // === 每个标签页一个 TAB_ID（仅此标签页可见）===
   function _uuid() {
     if (crypto.randomUUID) return crypto.randomUUID();
@@ -435,7 +462,7 @@
   let progressTimer = null;
 
   window.stateUuid = null;
-  
+
   const uploadInput = document.getElementById("uploadFile");
   const btnUploadFile = document.getElementById("btnUploadFile");
   const btnTestFile = document.getElementById("btnTestFile");
@@ -776,12 +803,6 @@
     }, 5000);
   }
 
-  // —— 事件绑定 ——
-document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await checkLoginOrRedirect();  // 先查 /auth/me，未登录跳 login.html
-  if (!ok) return;
-  await ensureSession();                    // 登录后再调 /anal_search/start-session
-});
 
 
   btnUploadFile.addEventListener("click", async () => {
@@ -794,22 +815,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!file) return;
 
   // ★ 新增：前端校验（后缀 + 大小）
-  const sizeMB  = file.size / (1024 * 1024);
-  const suffix  = file.name.split('.').pop().toLowerCase();
-  const allow   = ['mgf','msp','mat'];
+    const sizeMB  = file.size / (1024 * 1024);
+    const suffix  = file.name.split('.').pop().toLowerCase();
+    const allow   = ['mgf','msp','mat'];
   const MAX_MB  = 100; // 限制在100 MB
 
-  if (!allow.includes(suffix)) {
-    alert("Unsupported file format, only .mgf, .msp, .mat are supported.");
-    uploadInput.value = null;
-    return;
-  }
-  if (sizeMB > MAX_MB) {
-    alert(`File too large, maximum supported size is ${MAX_MB} MB.`);
-    uploadInput.value = null;
-    return;
-  }
-    
+    if (!allow.includes(suffix)) {
+      alert("Unsupported file format, only .mgf, .msp, .mat are supported.");
+      uploadInput.value = null;
+      return;
+    }
+    if (sizeMB > MAX_MB) {
+      alert(`File too large, maximum supported size is ${MAX_MB} MB.`);
+      uploadInput.value = null;
+      return;
+    }
+
     isTestFileSelected = false;
     currentUploadFile = file;
     currentUuidFilename = null;
@@ -860,7 +881,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           const firstA = spectrumList.querySelector('.list-group-item');
           if (firstA) {
             firstA.classList.add('active');
-          }          
+          }
         }
       } else {
         currentUploadFile = null; currentUuidFilename = null;
@@ -898,7 +919,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         method: "GET",
         credentials: "include"
       });
-      const data = await response.json(); // <-- 这里改成 response.json()
+      const data = await response.json();
       if (data.status === "success") {
         spectrumList.innerHTML = "";
         const nameArray = Object.values(data.names?.title || {});

@@ -12,6 +12,11 @@
   <link rel="stylesheet" href="deepmass.css" />
 
   <style>
+
+    /* 默认隐藏页面 */
+    body {
+      display: none;
+    }    
     .left-panel  { border-right: 1px solid #e5e7eb; background:#fff; }
     .right-panel { background:#fff; }
     .table-hover tbody tr { cursor:pointer; }
@@ -93,7 +98,9 @@
   </style>
 </head>
 <body>
-
+<div id="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 16px; color: #333;">
+    Loading...
+</div>
 <div class="top custom-navbar text-white py-2 px-3 d-flex align-items-center">
   <div class="navbar-header me-3">
     <a class="navbar-brand text-white fw-bold" data-no-turbolink="true" href="http://deepmass.cn/comp_ident/" style="font-size: 28px;">DeepMass</a>
@@ -275,31 +282,42 @@
 
 <script>
 
-  const API_BASE = 'http://deepmass.cn:8000';
+const API_BASE = 'http://deepmass.cn:8000';
 
-  async function checkLoginOrRedirect() {
-    try {
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      if (!res.ok) {
+    async function checkLoginOrRedirect() {
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (!res.ok) {
+          const next = encodeURIComponent(location.href);
+          location.href = `login.html?next=${next}`;
+          return false;
+        }
+        return true;
+      } catch {
         const next = encodeURIComponent(location.href);
         location.href = `login.html?next=${next}`;
         return false;
       }
-      return true;
-    } catch {
-      const next = encodeURIComponent(location.href);
-      location.href = `login.html?next=${next}`;
-      return false;
     }
-  }
 
-  (async () => {
-    const ok = await checkLoginOrRedirect();
-    if (!ok) return;             // not logged in, we redirected
-  })();
+    (async () => {
+      const ok = await checkLoginOrRedirect();
+      if (!ok) return;
+
+      // 显示页面
+      document.body.style.display = 'block';
+      const loading = document.getElementById('loading');
+      if (loading) loading.style.display = 'none';
+
+      // 原有初始化逻辑
+      await ensureSession();
+      await clearAllUIAndServer();
+      bindHighlightSwitch();
+    })();
 
   // ========== 每个标签页唯一 TAB_ID + URL 附加工具 ==========
   function uuidv4() {
