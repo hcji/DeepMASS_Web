@@ -475,6 +475,10 @@
                 <li><a data-no-turbolink="true" href="contactus.html">Contact Us</a></li>
                 <li><a data-no-turbolink="true" href="register.html">Register</a></li>
             </ul>
+
+            <ul class="nav navbar-nav navbar-right">
+                <li id="login-status"><a href="login.html">Login</a></li>
+            </ul>
             <!--            <form class="navbar-form navbar-right" accept-charset="UTF-8" method="get">-->
             <!--                <input name="utf8" type="hidden" value="✓">-->
             <!--                <div class="form-group"><span class="search-tooltip tooltip-format" data-html="true"-->
@@ -566,6 +570,54 @@
       </div>
     <div></div>
 </div>
+<script>
+    const API_BASE = "http://deepmass.cn:8000";
+
+    async function checkLogin() {
+        try {
+            const res = await fetch(`${API_BASE}/auth/me`, { credentials: "include" });
+            const data = await res.json();
+            
+            const loginItem = document.getElementById("login-status");
+
+            if (res.ok && data.status === "success") {
+                loginItem.innerHTML = `
+                    <a href="#" id="logout-btn">Hi, ${data.user.contact_info} (Logout)</a>
+                `;
+
+                document.getElementById("logout-btn").addEventListener("click", async () => {
+                    const confirmLogout = confirm("Are you sure you want to log out?");
+                    if (!confirmLogout) return;
+
+                    try {
+                        const logoutRes = await fetch(`${API_BASE}/auth/logout`, {
+                            method: "POST",
+                            credentials: "include"
+                        });
+                        const logoutData = await logoutRes.json();
+
+                        if (logoutRes.ok && logoutData.status === "success") {
+                            alert("Logout successful!");
+                            window.location.href = "index.html"; // 退出后跳转首页
+                        } else {
+                            alert(logoutData.message || "Logout failed.");
+                        }
+                    } catch (e) {
+                        console.error("Logout error:", e);
+                        alert("Logout error. Please try again.");
+                    }
+                });
+            } else {
+                loginItem.innerHTML = `<a href="login.html">Login</a>`;
+            }
+        } catch (e) {
+            console.error("Error checking login status:", e);
+        }
+    }
+
+    checkLogin();
+</script>
+
 
 </body>
 </html>
