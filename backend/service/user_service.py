@@ -1,4 +1,6 @@
-
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from backend.dao.user_dao import UserDAO
 from backend.service.code_service import CaptchaService
@@ -6,9 +8,9 @@ from backend.service.login_log_service import LoginLogService
 
 
 class UserService:
-    def __init__(self):
-        self.dao = UserDAO()
-
+    def __init__(self, db_session: Session = None):
+        self.session = db_session
+        self.dao = UserDAO(db_session=db_session)
     def auth_login(self, email, password):
         # 验证密码
         login_flag = self.dao.login(email, password)
@@ -17,9 +19,8 @@ class UserService:
         if login_flag:
             LoginLogService().insert_login_log(email)
         return login_flag
-
     def user_register(self, email, password, name, captcha):
-        validate_flag = CaptchaService().validate(email, captcha)
+        validate_flag = CaptchaService(db_session=self.dao.session).validate(email, captcha)
         if validate_flag:
             return {"msg": "验证码错误或已过期"}
         if self.dao.query_email_exist(email):
@@ -34,7 +35,7 @@ class UserService:
           2. 检查用户是否存在
           3. 更新用户密码
         """
-        validate_flag = CaptchaService().validate(email, captcha)
+        validate_flag = CaptchaService(db_session=self.dao.session).validate(email, captcha)
         if validate_flag:
             return {"msg": "验证码错误或已过期"}
         if not self.dao.query_email_exist(email):

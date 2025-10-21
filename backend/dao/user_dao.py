@@ -3,15 +3,16 @@ import hashlib
 import uuid
 
 from sqlalchemy import select
-
+from sqlalchemy.exc import IntegrityError
 from backend.dao.basedao import BaseDao
 from backend.entity.user import User
+from sqlalchemy.orm import Session
 
 
 # 定义UserDao类，继承自BaseDao
 class UserDAO(BaseDao):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_session: Session = None):
+        super().__init__(db_session=db_session)
 
     def login(self, email, password):
         # 对密码取sha256
@@ -39,7 +40,13 @@ class UserDAO(BaseDao):
         password = hashlib.new("sha256", password.encode("utf-8")).hexdigest()
         user = User(id=uuid.uuid4().hex, name=name, contact_info=email, passwd=password)
         self.session.add(user)
-        self.session.commit()
+        try:
+            self.session.commit()
+            return True
+        except IntegrityError:
+            # 邮箱重复，回滚事务
+            self.session.rollback()
+            return False
 
     def update_password(self, email, new_password):
         new_password_hashed = hashlib.new("sha256", new_password.encode("utf-8")).hexdigest()

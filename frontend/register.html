@@ -239,106 +239,70 @@
         </a>
       </div>
 </form>
-
-<script src="./layui/layui.js"></script>
-<script src="libs/axios-1.5.0.min.js"></script>
-<script src="libs/jquery-1.10.2.min.js"></script>
 <script>
-    layui.use(function () {
-        var $ = layui.$;
-        var form = layui.form;
-        var layer = layui.layer;
-        var util = layui.util;
-
-        // 自定义验证规则
-        form.verify({
-            // 确认密码
-            confirmPassword: function (value, item) {
-                var passwordValue = $('#reg-password').val();
-                if (value !== passwordValue) {
-                    return 'The two password inputs are inconsistent';
-                }
-            }
-        });
-
-        // 提交事件
-        form.on('submit(demo-reg)', function (data) {
-            var field = data.field; // 获取表单字段值
-
-            // 是否勾选同意
-            if (!field.agreement) {
-                layer.msg('您必须勾选同意用户协议才能注册');
-                return false;
-            }
-
-            var json = JSON.stringify(field);
-            
-            $.ajax({
-                url: 'http://deepmass.cn:8000/register', // 服务器地址
-                type: 'POST',           // 请求方式
-                contentType: 'application/json;', // 设置请求内容类型
-                data: json, // 将JSON对象转换为字符串并发送
-                dataType: 'json',       // 预期服务器返回的数据类型
-                success: function (res) {
-                    // 请求成功后的回调函数
-                    console.log(res); // 打印返回的数据
-                    // 在这里你可以根据返回的数据进行页面更新等操作
-                    if (res['msg'] == "注册成功"){
-                        window.open('http://deepmass.cn/comp_ident/', '_self');
-                    } else if (res['msg'] === "用户已经注册") {
-                        layer.msg("该邮箱已注册，请直接登录或使用其它邮箱");
-                    } else {
-                        layer.msg(res['msg']);
-                    }
-
-                },
-                error: function (err) {
-                    // 请求失败后的回调函数
-                    console.error(err); // 打印错误信息
-                }
-            });
-
-
-
-            return false; // 阻止默认 form 跳转
-        });
-    });
-</script>
-<script>
-
-    var $ = layui.jquery, element = layui.element; //Tab的切换功能，切换事件监听等，需要依赖element模块
+layui.use(['form', 'layer'], function () {
+    var $ = layui.$;
     var form = layui.form;
+    var layer = layui.layer;
 
-
-    var InterValObj; //timer变量，控制时间
-    var count = 60; //间隔函数，1秒执行
-    var curCount;//当前剩余秒数
-    //发送验证码
-    function mail() {
-        curCount = count;
-        const email = document.getElementsByName("contact_info")[0].value;
-
-        layer.msg('请稍后');
-        document.getElementById("btnSendCode").setAttribute("disabled", "true");//设置按钮为禁用状态
-        $('#btnSendCode').addClass('layui-btn-disabled');
-        $('#btnSendCode').text(curCount + "秒后重获");
-        InterValObj = window.setInterval(SetRemainTime, 1000); // 启动计时器timer处理函数，1秒执行一次
-        $.get(`http://deepmass.cn:8000/sendmail?email=${email}`);
-
-    }
-
-    //timer处理函数
-    function SetRemainTime() {
-        if (curCount == 0) {
-            $('#btnSendCode').removeClass('layui-btn-disabled');
-            $('#btnSendCode').text("重获验证码");
-            window.clearInterval(InterValObj);// 停止计时器
-            document.getElementById("btnSendCode").removeAttribute("disabled");//移除禁用状态改为可用
-        } else {
-            curCount--;
-            $('#btnSendCode').text(curCount + "秒后重获");
+    // 确认密码验证
+    form.verify({
+        confirmPassword: function (value) {
+            var pwd = $('#reg-password').val();
+            if (value !== pwd) return 'The two password inputs are inconsistent';
         }
-    }
+    });
+
+    // 注册表单提交
+    form.on('submit(demo-reg)', function (data) {
+        var field = data.field;
+        if (!field.agreement) { layer.msg('您必须勾选同意用户协议才能注册'); return false; }
+
+        $.ajax({
+            url: 'http://deepmass.cn:8000/register',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(field),
+            dataType: 'json',
+            success: function (res) {
+                if (res.msg === "注册成功") {
+                    window.location.href = 'http://deepmass.cn/comp_ident/';
+                } else if (res.msg === "用户已经注册") {
+                    layer.msg("该邮箱已注册，请直接登录或使用其它邮箱");
+                } else {
+                    layer.msg(res.msg);
+                }
+            },
+            error: function (err) { console.error(err); layer.msg('注册请求失败'); }
+        });
+
+        return false; // 阻止默认提交
+    });
+
+    // 验证码发送
+    var count = 60, InterValObj, curCount;
+    $('#btnSendCode').one('click', function mail() {
+        curCount = count;
+        var email = $('#reg-cellphone').val();
+        layer.msg('请稍后');
+        var $btn = $(this);
+        $btn.addClass('layui-btn-disabled').attr('disabled', true);
+        $btn.text(curCount + "秒后重获");
+
+        InterValObj = setInterval(function() {
+            curCount--;
+            if (curCount <= 0) {
+                clearInterval(InterValObj);
+                $btn.removeClass('layui-btn-disabled').removeAttr('disabled').text("重获验证码");
+                $btn.one('click', mail); // 重新绑定
+            } else {
+                $btn.text(curCount + "秒后重获");
+            }
+        }, 1000);
+
+        $.get(`http://deepmass.cn:8000/sendmail?email=${email}`);
+    });
+});
 </script>
 </body>
 </html>

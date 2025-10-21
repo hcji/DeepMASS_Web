@@ -13,9 +13,9 @@ MAIL_PORT = GLOBAL_CONFIG["email"]["port"]
 
 
 class EmailSenderService:
-    def __init__(self):
+    def __init__(self, db_session=None):
         super().__init__()
-        self.dao = CaptchaDAO()
+        self.dao = CaptchaDAO(db_session=db_session)
 
     def send_mail(self, receiver,code):
         email_content = "感谢您使用deepmass ，您的验证码为：%s" % code
@@ -40,7 +40,7 @@ class EmailSenderService:
         # 修正insert_log 方法中传入的参数顺序正确
         self.dao.insert_log(email, code)
         self.send_mail(email,code)
-        self.dao.commit()
+        self.dao.session.commit()
 
     def gen_random_code(self):
         # code = random.sample(list(range(10, 101)), 6)

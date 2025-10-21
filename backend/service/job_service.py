@@ -5,9 +5,9 @@ from backend.dao.job_dao import JobDAO
 
 
 class JobService:
-    def __init__(self):
+    def __init__(self, db_session=None):
         super().__init__()
-        self.dao = JobDAO()
+        self.dao = JobDAO(db_session=db_session)
 
     def start_job(self, email):
         logging.info("鉴定任务开始记录开始")

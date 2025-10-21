@@ -1,12 +1,12 @@
 # 导入SQLAlchemy模块
 from backend.dao.basedao import BaseDao
 from backend.entity.job import Job
-
+from sqlalchemy.orm import Session
 
 # 定义UserDao类，继承自BaseDao
 class JobDAO(BaseDao):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_session: Session=None):
+        super().__init__(db_session=db_session)
 
     def insert_job(self, email, start_time):
         job = Job(

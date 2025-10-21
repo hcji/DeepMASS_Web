@@ -1,12 +1,7 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-
-Base = declarative_base()
-
+from backend.dao.database import SessionLocal
+from sqlalchemy.orm import Session
 
 class BaseDao:
-    def __init__(self):
-        self.engine = create_engine(
-            "sqlite:///./backend/sqlite/User_Information.db", echo=True
-        )
-        self.session = sessionmaker(bind=self.engine)()
+    def __init__(self, db_session: Session = None):
+        # 如果传入了 db_session，就使用它；否则新建一个 SessionLocal
+        self.session = db_session or SessionLocal()

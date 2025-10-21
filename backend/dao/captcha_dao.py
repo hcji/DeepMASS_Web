@@ -6,21 +6,29 @@ from sqlalchemy import select
 
 from backend.dao.basedao import BaseDao
 from backend.entity.captcha import Code
-
+from sqlalchemy.orm import Session
 
 # 定义UserDao类，继承自BaseDao
 class CaptchaDAO(BaseDao):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_session: Session = None):
+        super().__init__(db_session=db_session)
 
     def insert_log(self, email, code):
-        # 把验证码存入数据，附带当前时间，email、code、time，实际列名称以数据库为准
-
-        # 先删除同一 email 之前的验证码记录，再添加新记录
-        self.session.query(Code).filter(Code.contact_info == email).delete()
-        verify_time = datetime.now().timestamp()
-        ed_code = Code(contact_info=email, verify_code=code, verify_time=verify_time)
-        self.session.add(ed_code)
+        """插入或更新验证码记录"""
+        now = datetime.now().timestamp()
+        # 查询是否已有记录
+        existing = self.session.query(Code).filter_by(contact_info=email).first()
+        if existing:
+            # 更新已有记录
+            existing.verify_code = code
+            existing.verify_time = now
+            print(f"[DEBUG] 更新验证码：{email} -> {code}")
+        else:
+            # 新建新记录
+            new_code = Code(contact_info=email, verify_code=code, verify_time=now)
+            self.session.add(new_code)
+            print(f"[DEBUG] 新建验证码：{email} -> {code}")
+        # self.session.commit()
 
     def query_captcha_code(self, email):
         res_code = (
@@ -34,7 +42,7 @@ class CaptchaDAO(BaseDao):
 
     def delete_captcha(self, email):
         self.session.query(Code).filter_by(contact_info=email).delete()
-        self.session.commit()
+        # self.session.commit()
 
     def commit(self):
         self.session.commit()

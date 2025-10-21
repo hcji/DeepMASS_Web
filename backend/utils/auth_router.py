@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Response, HTTPException, status, Form, Depends
+from sqlalchemy.orm import Session
 from backend.service.user_service import UserService
 from backend.service.jwt_tools import create_access_token
 from backend.service.auth_deps import ACCESS_COOKIE_NAME, get_current_user
+from backend.dao.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -10,9 +12,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def login(
     response: Response,
     contact_info: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(...),
+    db: Session = Depends(get_db)
 ):
-    ok = UserService().auth_login(contact_info, password)
+    ok = UserService(db_session=db).auth_login(contact_info, password)
     if not ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password.")
 
