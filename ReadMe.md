@@ -89,12 +89,22 @@ If you want to build this website by yourself, please follow the installation st
            dpi: 900
            width: 2
            length: 1
+    jwt_secret: "XXX"
+    database: "mysql+pymysql://root:123456@127.0.0.1:3307/deepmass?charset=utf8mb4"
    ```
 
-6. Using the `schema.sql` file located in `DeepMASS_Web/backend/sqlite`, create your empty database there with:
+6. Create your empty database there with:
 
    ```bash
-    sqlite3 ./backend/sqlite/User_Information.db < ./backend/sqlite/schema.sql
+    mkdir -p /data/mysql
+    chmod 777 /data/mysql
+    docker run -d \
+    --name deepmass-mysql \
+    -e MYSQL_ROOT_PASSWORD=123456 \
+    -e MYSQL_DATABASE=deepmass \
+    -p 3307:3306 \
+    -v /data/mysql:/var/lib/mysql \
+    mysql:8.0
    ```
 
 7. Replace all instances of the IP address `deepmass.cn` in the files with the IP address of your own host.
