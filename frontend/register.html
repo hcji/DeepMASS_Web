@@ -266,7 +266,7 @@ layui.use(['form', 'layer'], function () {
             dataType: 'json',
             success: function (res) {
                 if (res.msg === "注册成功") {
-                    window.location.href = 'http://deepmass.cn/comp_ident/';
+                    window.location.href = 'http://deepmass.cn/index.html';
                 } else if (res.msg === "用户已经注册") {
                     layer.msg("该邮箱已注册，请直接登录或使用其它邮箱");
                 } else {
