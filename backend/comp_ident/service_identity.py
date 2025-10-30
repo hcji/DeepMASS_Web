@@ -36,8 +36,8 @@ def load_files(
         except Exception:
             raise ValueError("Please upload standard file")
         spectrum_list.extend(loaded)
-        if (not is_super_user) and len(spectrum_list) > max_spectrum_num:
-            raise ValueError(f"Only a maximum of {max_spectrum_num} spectra are allowed to be uploaded")
+        if (not is_super_user) and len(spectrum_list) > 499:
+            raise ValueError("Too many spectra (max 499)")
 
     titles = [
         s.metadata["compound_name"] if "compound_name" in (s.metadata or {})
