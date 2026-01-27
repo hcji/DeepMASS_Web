@@ -75,4 +75,4 @@ def sendmail(email: str, db: Session = Depends(get_db)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.register:app", host="0.0.0.0", workers=5, reload=True)
+    uvicorn.run("backend.register:app", host="0.0.0.0", workers=2)

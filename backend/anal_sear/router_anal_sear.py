@@ -22,6 +22,9 @@ from backend.service.session_store import Store  # ★ 使用统一的 Store
 
 import json
 from backend.service.auth_deps import require_user  # ★ 新增
+from pathlib import Path
+# 用当前文件位置推导项目根目录（DeepMASS_Web）
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 # =========================
 # 统一 Store（与 comp_ident 共用 Redis / Cookie）
@@ -32,7 +35,7 @@ store = Store(
     redis_host="127.0.0.1",
     redis_port=6379,
     redis_db=0,
-    base_dir="temp/session_store",
+    base_dir=str(BASE_DIR / "temp" / "session_store"),
     cookie_name="session_id",
 )
 
@@ -45,14 +48,15 @@ router = APIRouter(
     dependencies=[Depends(require_user)]  # ★ 统一保护所有 anal_search 接口
 )
 
-MODEL_POS_PATH = 'model/Ms2Vec_allGNPSpositive.hdf5'
-MODEL_NEG_PATH = 'model/Ms2Vec_allGNPSnegative.hdf5'
+MODEL_POS_PATH = str(BASE_DIR / "model" / "Ms2Vec_allGNPSpositive.hdf5")
+MODEL_NEG_PATH = str(BASE_DIR / "model" / "Ms2Vec_allGNPSnegative.hdf5")
 
-TMP_DIR = "./temp/result_csv_temp/"
-STATE_DIR = "./temp/state_files/"
-DB_TMP_DIR = "./temp/database_temp/"
-FILE_TMP_DIR = "./temp/temp_files/"
-TEMP_DIR = "./temp"
+# 全部 temp 路径基于 BASE_DIR（不再用 ./temp）
+TMP_DIR      = str(BASE_DIR / "temp" / "result_csv_temp") + "/"
+STATE_DIR    = str(BASE_DIR / "temp" / "state_files") + "/"
+DB_TMP_DIR   = str(BASE_DIR / "temp" / "database_temp") + "/"
+FILE_TMP_DIR = str(BASE_DIR / "temp" / "temp_files") + "/"
+TEMP_DIR     = str(BASE_DIR / "temp")
 SESSION_TIMEOUT = 86400 * 3  # 3天
 
 os.makedirs(TMP_DIR, exist_ok=True)
