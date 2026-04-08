@@ -152,7 +152,7 @@ async def upload_test_file(request: Request, response: Response, tab_id: Optiona
     raw_sid = store.get_or_create_session(request, response)
     sid = _compose_sid_with_tab(raw_sid, tab_id)
     try:
-        test_file = "analogSearch_data/test.mgf"
+        test_file = "example/demo_data/test.mgf"
         if not os.path.exists(test_file):
             return {"status": "error", "message": "Test file not found"}
         spectrums_df, name_df, _ = load_files([test_file])
