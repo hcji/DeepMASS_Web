@@ -22,11 +22,11 @@ class UserService:
 
     def user_register(self, email, password, name, captcha):
         validate_flag = CaptchaService(db_session=self.dao.session).validate(email, captcha)
-        if validate_flag:
-            return False, "验证码错误或已过期"
-
         if self.dao.query_email_exist(email):
             return False, "用户已经注册"
+        
+        if validate_flag:
+            return False, "验证码错误或已过期"
 
         try:
             self.dao.add_user(email, password, name)
@@ -36,19 +36,18 @@ class UserService:
             return False, "注册失败"
 
     def reset_password(self, email, new_password, captcha):
+        # 1. 检查用户是否存在
+        if not self.dao.query_email_exist(email):
+            return False, "该邮箱未注册，请先注册"
+
+        # 2. 验证验证码
         validate_flag = CaptchaService(db_session=self.dao.session).validate(email, captcha)
         if validate_flag:
             return False, "验证码错误或已过期"
 
-        if not self.dao.query_email_exist(email):
-            return False, "用户不存在"
-
-        try:
-            update_flag = self.dao.update_password(email, new_password)
-            if update_flag:
-                return True, "密码重置成功"
-            else:
-                return False, "密码重置失败"
-        except Exception as e:
-            print(f"[ERROR] 密码重置失败: {e}")
+        # 3. 更新密码
+        update_flag = self.dao.update_password(email, new_password)
+        if update_flag:
+            return True, "密码重置成功"
+        else:
             return False, "密码重置失败"

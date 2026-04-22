@@ -161,29 +161,50 @@
 
         // Form submission event
         form.on('submit(demo-reg)', function (data) {
-            var field = data.field; // Get form field values
-            // Removed: agreement check
-
+            var field = data.field;
             var json = JSON.stringify(field);
             
             $.ajax({
-                url: 'http://deepmass.cn:8000/reset_password', // Server URL
-                type: 'POST',           // Request method
-                contentType: 'application/json;', // Set request content type
-                data: json, // Convert JSON object to string and send
-                dataType: 'json',       // Expected data type from server
+                url: 'http://deepmass.cn:8000/reset_password',
+                type: 'POST',
+                contentType: 'application/json;',
+                data: json,
+                dataType: 'json',
                 success: function (res) {
-                    console.log(res);
-                    // Handle response data and update page as needed
-                    if (res['msg'] == "密码重置成功"){
-                        window.open('http://deepmass.cn/index.html', '_self');
+                    if (res['msg'] == "密码重置成功") {
+                        layer.msg(res['msg']);
+                        setTimeout(function () {
+                            window.open('http://deepmass.cn/index.html', '_self');
+                        }, 1000);
+                    } else {
+                        layer.msg(res['msg']);
                     }
                 },
                 error: function (err) {
                     console.error(err);
+                    let msg = "请求失败，请重试";
+
+                    // 尝试获取 detail
+                    if (err.responseJSON) {
+                        if (err.responseJSON.detail) {
+                            msg = err.responseJSON.detail;
+                        } else if (err.responseJSON.msg) {
+                            msg = err.responseJSON.msg;
+                        }
+                    } else if (err.responseText) {
+                        try {
+                            const res = JSON.parse(err.responseText);
+                            if (res.detail) msg = res.detail;
+                            else if (res.msg) msg = res.msg;
+                        } catch (e) {
+                            console.log("解析失败", e);
+                        }
+                    }
+
+                    layer.msg(msg); // 弹出提示
                 }
             });
-            return false; // Prevent default form submission
+            return false;
         });
     });
 

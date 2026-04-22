@@ -81,7 +81,9 @@ def reset_password(reg: ResetPassword, db: Session = Depends(get_db)):
     ok, msg = service.reset_password(reg.contact_info, reg.passwd, reg.vercode)
 
     if not ok:
-        if msg == "用户不存在":
+        # 这里会把未注册的邮箱返回 400 或 404 都可以
+        # 建议 404 表示资源不存在
+        if msg == "该邮箱未注册，请先注册":
             raise HTTPException(status_code=404, detail=msg)
         raise HTTPException(status_code=400, detail=msg)
 
