@@ -220,7 +220,7 @@
             <button class="layui-btn layui-btn-fluid " lay-submit lay-filter="demo-reg">register</button>
         </div>
         <div style="margin-bottom: 10px;">
-            <a href="http://deepmass.cn/comp_ident/">Login to existing account</a>
+            <a href="http://deepmass.cn/login.html">Login to existing account</a>
         </div>
         <div>
             <a href="reset.html">Reset password</a>
@@ -256,7 +256,10 @@ layui.use(['form', 'layer'], function () {
     // 注册表单提交
     form.on('submit(demo-reg)', function (data) {
         var field = data.field;
-        if (!field.agreement) { layer.msg('您必须勾选同意用户协议才能注册'); return false; }
+        if (!field.agreement) {
+            layer.msg('您必须勾选同意用户协议才能注册');
+            return false;
+        }
 
         $.ajax({
             url: 'http://deepmass.cn:8000/register',
@@ -265,15 +268,27 @@ layui.use(['form', 'layer'], function () {
             data: JSON.stringify(field),
             dataType: 'json',
             success: function (res) {
-                if (res.msg === "注册成功") {
+                layer.msg(res.msg || '注册成功');
+                setTimeout(function () {
                     window.location.href = 'http://deepmass.cn/index.html';
-                } else if (res.msg === "用户已经注册") {
-                    layer.msg("该邮箱已注册，请直接登录或使用其它邮箱");
-                } else {
-                    layer.msg(res.msg);
-                }
+                }, 800);
             },
-            error: function (err) { console.error(err); layer.msg('注册请求失败'); }
+            error: function (xhr) {
+                console.error(xhr);
+
+                let msg = '注册请求失败';
+
+                if (xhr.responseJSON) {
+                    msg = xhr.responseJSON.detail || xhr.responseJSON.msg || msg;
+                } else if (xhr.responseText) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        msg = data.detail || data.msg || msg;
+                    } catch (e) {}
+                }
+
+                layer.msg(msg);
+            }
         });
 
         return false; // 阻止默认提交
@@ -294,7 +309,7 @@ layui.use(['form', 'layer'], function () {
             if (curCount <= 0) {
                 clearInterval(InterValObj);
                 $btn.removeClass('layui-btn-disabled').removeAttr('disabled').text("重获验证码");
-                $btn.one('click', mail); // 重新绑定
+                $btn.one('click', mail);
             } else {
                 $btn.text(curCount + "秒后重获");
             }
@@ -304,7 +319,5 @@ layui.use(['form', 'layer'], function () {
     });
 });
 </script>
-</body>
-</html>
 </body>
 </html>

@@ -17,34 +17,32 @@ class EmailSenderService:
         super().__init__()
         self.dao = CaptchaDAO(db_session=db_session)
 
-    def send_mail(self, receiver,code):
-        email_content = "感谢您使用deepmass ，您的验证码为：%s" % code
+    def send_mail(self, receiver, code):
+        email_content = "感谢您使用deepmass，您的验证码为：%s" % code
         email_title = "DEEPMASS"
 
         message = MIMEText(email_content, "plain", "utf-8")
         message["From"] = MAIL_SENDER
-        message["To"] = ",".join(receiver)
+        message["To"] = receiver
         message["Subject"] = email_title
+
         try:
             smtpObj = smtplib.SMTP()
-            smtpObj.connect(MAIL_HOST, 25)  # 25 为 SMTP 端口号
+            smtpObj.connect(MAIL_HOST, MAIL_PORT) # 25 为 SMTP 端口号
             smtpObj.login(MAIL_USER, MAIL_PWD)
-            smtpObj.sendmail(MAIL_USER, receiver, message.as_string())
+            smtpObj.sendmail(MAIL_USER, [receiver], message.as_string())
+            smtpObj.quit()
             print("邮件发送成功")
         except Exception as e:
             print("邮件发送失败")
             raise e
 
-    def send_captcha(self,email):
+    def send_captcha(self, email):
         code = self.gen_random_code()
-        # 修正insert_log 方法中传入的参数顺序正确
         self.dao.insert_log(email, code)
-        self.send_mail(email,code)
+        self.send_mail(email, code)
         self.dao.session.commit()
 
     def gen_random_code(self):
-        # code = random.sample(list(range(10, 101)), 6)
-        # code = list(map(lambda x: str(x), code))
-        # code = "".join(code)
         code = str(random.randint(100000, 999999))
         return code

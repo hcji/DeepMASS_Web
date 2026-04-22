@@ -13,7 +13,19 @@ from datetime import datetime
 app = FastAPI()
 
 # 允许所有来源的CORS(解决跨域问题)
-origins = ["*"]
+origins = [
+    # 正式域名
+    "http://deepmass.cn",
+    "http://deepmass.cn:8000",
+    "https://deepmass.cn",
+    "https://deepmass.cn:8000",
+
+    # www
+    "http://www.deepmass.cn",
+    "http://www.deepmass.cn:8000",
+    "https://www.deepmass.cn",
+    "https://www.deepmass.cn:8000",
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,12 +54,16 @@ class Register(BaseModel):
 @app.post("/register")
 async def register(reg: Register, db: Session = Depends(get_db)):
     if reg.passwd != reg.confirmPassword:
-        return JSONResponse({"msg": "两次输入的密码不一致"})
+        raise HTTPException(status_code=400, detail="两次输入的密码不一致")
     
-    res = UserService(db_session=db).user_register(
+    ok, msg = UserService(db_session=db).user_register(
         reg.contact_info, reg.passwd, reg.name, reg.vercode
     )
-    return JSONResponse(res)
+
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+
+    return {"msg": msg}
 
 
 # 密码重置接口使用的数据模型
@@ -59,12 +75,17 @@ class ResetPassword(BaseModel):
 @app.post("/reset_password")
 def reset_password(reg: ResetPassword, db: Session = Depends(get_db)):
     if reg.passwd != reg.confirmPassword:
-        return JSONResponse({"msg": "两次输入的密码不一致"})
+        raise HTTPException(status_code=400, detail="两次输入的密码不一致")
+
     service = UserService(db_session=db)
-    res = service.reset_password(
-        reg.contact_info, reg.passwd, reg.vercode
-    )
-    return JSONResponse(res)
+    ok, msg = service.reset_password(reg.contact_info, reg.passwd, reg.vercode)
+
+    if not ok:
+        if msg == "用户不存在":
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+    return {"msg": msg}
 
 # 发送验证码接口
 @app.get("/sendmail")

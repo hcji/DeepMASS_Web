@@ -1,7 +1,4 @@
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-
 from backend.dao.user_dao import UserDAO
 from backend.service.code_service import CaptchaService
 from backend.service.login_log_service import LoginLogService
@@ -17,31 +14,41 @@ class UserService:
         print(f"=============={login_flag}==================")
         # 登录成功，留下记录
         if login_flag:
-            LoginLogService().insert_login_log(email)
+            try:
+                LoginLogService().insert_login_log(email)
+            except Exception as e:
+                print(f"[WARN] 登录日志写入失败: {e}")
         return login_flag
+
     def user_register(self, email, password, name, captcha):
         validate_flag = CaptchaService(db_session=self.dao.session).validate(email, captcha)
         if validate_flag:
-            return {"msg": "验证码错误或已过期"}
+            return False, "验证码错误或已过期"
+
         if self.dao.query_email_exist(email):
-            return {"msg": "用户已经注册"}
-        self.dao.add_user(email, password, name)
-        return {"msg": "注册成功"}
+            return False, "用户已经注册"
+
+        try:
+            self.dao.add_user(email, password, name)
+            return True, "注册成功"
+        except Exception as e:
+            print(f"[ERROR] 注册失败: {e}")
+            return False, "注册失败"
 
     def reset_password(self, email, new_password, captcha):
-        """
-        重置密码接口逻辑：
-          1. 验证验证码是否正确
-          2. 检查用户是否存在
-          3. 更新用户密码
-        """
         validate_flag = CaptchaService(db_session=self.dao.session).validate(email, captcha)
         if validate_flag:
-            return {"msg": "验证码错误或已过期"}
+            return False, "验证码错误或已过期"
+
         if not self.dao.query_email_exist(email):
-            return {"msg": "用户不存在"}
-        update_flag = self.dao.update_password(email, new_password)
-        if update_flag:
-            return {"msg": "密码重置成功"}
-        else:
-            return {"msg": "密码重置失败"}
+            return False, "用户不存在"
+
+        try:
+            update_flag = self.dao.update_password(email, new_password)
+            if update_flag:
+                return True, "密码重置成功"
+            else:
+                return False, "密码重置失败"
+        except Exception as e:
+            print(f"[ERROR] 密码重置失败: {e}")
+            return False, "密码重置失败"
