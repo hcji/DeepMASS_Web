@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MZmine Workflow for DeepMass</title>
+
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(255,255,255,0.08);
+      --text-light: #e8f1ff;
+      --muted-light: #b7c8e6;
+      --border: rgba(255,255,255,0.14);
+      --shadow: 0 24px 60px rgba(2,8,23,0.35);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --card: #ffffff;
+      --text: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+      html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #07111f;
+      }
+
+      body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+      radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 30%),
+      radial-gradient(circle at top right, rgba(14,165,233,0.18), transparent 26%),
+      linear-gradient(180deg, #07111f 0%, #0a1730 45%, #091425 100%);
+      color: var(--text-light);
+      line-height: 1.7;
+      }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 72px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(16px);
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg,#2563eb,#38bdf8);
+      display: grid;
+      place-items: center;
+    }
+
+    .top-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .top-links a {
+      padding: 8px 14px;
+      border-radius: 999px;
+      color: var(--muted-light);
+    }
+
+    .top-links a:hover {
+      background: rgba(255,255,255,0.08);
+      color: white;
+    }
+
+    .hero {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+      padding: 56px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(96,165,250,0.12);
+      color: #cfe3ff;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+    }
+
+    .hero p {
+      color: var(--muted-light);
+      max-width: 860px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 28px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted-light);
+    }
+
+    .mini-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(14,165,233,0.10);
+      color: #dbeafe;
+    }
+
+    .footer {
+      text-align: center;
+      color: #9fb5d8;
+      margin-top: 24px;
+    }
+
+      .step-image{
+      width:100%;
+      max-width:900px;
+      display:block;
+      margin:18px auto;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:0 14px 35px rgba(2,8,23,0.28);
+      }
+
+      /* Parameter Table */
+      .param-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:18px;
+      background:rgba(255,255,255,0.04);
+      border-radius:16px;
+      overflow:hidden;
+      font-size:0.98rem;
+      }
+
+      .param-table thead{
+      background:rgba(255,255,255,0.08);
+      }
+
+      .param-table th{
+      text-align:left;
+      padding:16px 18px;
+      color:#ffffff;
+      font-weight:700;
+      border-bottom:1px solid rgba(255,255,255,0.12);
+      }
+
+      .param-table td{
+      padding:16px 18px;
+      color:var(--muted-light);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      vertical-align:top;
+      }
+
+      .param-table tbody tr:last-child td{
+      border-bottom:none;
+      }
+
+      .param-table tbody tr:hover{
+      background:rgba(255,255,255,0.03);
+      }
+      .hero p {
+        width: 100%;
+        max-width: none;
+      }
+    @media (max-width: 960px) {
+      .hero { padding: 34px 24px; }
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- Top Navigation -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DM</div>
+        <div>DeepMASS2 Documentation</div>
+      </div>
+
+      <nav class="top-links">
+        <a href="handbooks.html">Home</a>
+        <a href="handbooks.html#data-processing">Data Processing</a>
+        <a href="handbooks.html#metadata">Input Format</a>
+        <a href="handbooks.html#results">Results</a>
+      </nav>
+    </header>
+
+      <!-- Hero -->
+      <section class="hero">
+      <div class="eyebrow">Introduction</div>
+
+      <h1>Mass spectrometry processing with MS-DIAL</h1>
+
+      <p>
+            <strong>Tutorial Description: </strong> This tutorial is based on the latest version of MS-DIAL 5 and provides a comprehensive analysis of the entire workflow for non-targeted LC-MS/MS (DDA mode) metabolomics data processing, ensuring the output of high-quality MS2 spectra and feature tables that meet the input requirements for structural identification by the DeepMass software.
+      </p>
+
+      </section>
+
+      <!-- Installation -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Installation</h2>
+
+      <p>
+           Download the latest version of MS-DIAL software at 
+
+            <a href="http://prime.psc.riken.jp/Metabolomics_Software/MS-DIAL" target="_blank">
+            http://prime.psc.riken.jp/Metabolomics_Software/MS-DIAL
+            </a>
+      </p>
+      </div>
+      </section>
+
+      <!-- Data Processing Overview -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Mass Spectrometry Raw Data Preparation</h2>
+
+      <p>
+            DeepMass structural identification has stringent quality requirements for input data, so data compliance checks should be performed in advance:
+
+      </p>
+      <ol>
+            <li><strong>Data acquisition mode:</strong> 1.Prioritize the use of Data-Dependent Acquisition (DDA) mode, which must include both MS1 full-scan and MS2 fragment scan data. For DIA mode, deconvolution must be performed first to obtain the corresponding MS2 spectra. </li>
+            <li><strong>Instrument format compatibility: </strong> MS-DIAL 5 directly supports vendor raw formats such as Thermo (.raw), Agilent (.d), SCIEX (.wiff/.wiff2), and Waters (.raw), with no need for prior conversion. For generic formats, mzML (recommended), abf, and cdf are preferred.</li>
+      </ol>
+      </div>
+      </section>
+
+      <!-- Open Format -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Mass Spectrometry Data Processing with MS-DIAL</h2>
+      <h3>Introduction</h3>
+      <p>
+           In MS-DIAL, a series of steps are required to process mass spectrometry data. Here, we introduce the key processing steps for LC-MS/MS data acquired in non-targeted mode. MS-DIAL is capable of processing LC-MS/MS data obtained in non-targeted mode, as well as MSE data, and can now also handle ion mobility spectrometry data.
+      </p>
+      </div>
+      </section>
+
+
+      <!-- Processing Steps -->
+      <section class="panel">
+      <div class="panel-inner">
+
+      <h2>Processing Steps for non-targeted LC-MS/MS</h2>
+
+      <!-- Step 1 -->
+      <h3>Step 1. Make a New Project</h3>
+      <p>
+            Create a new project, set the project title and project file path.
+      </p>
+      <a href="img/msdial/msdial_step1.png" target="_blank"><img src="img/msdial/msdial_step1.png" class="step-image"></a>
+      <!-- Step 2 -->
+      <h3>Step 2. Import Files</h3>
+      <p>
+            Import data files. MSDIAL5 supports importing raw vendor formats, but it is recommended to convert raw data to the open-source mzML format, which offers the strongest compatibility and highest processing stability, and avoids reading errors caused by vendor proprietary formats. Set "Type, Class ID, Acquisition, Analytical order", etc., and then click "Next".
+      </p>
+      
+      <a href="img/msdial/msdial_step2.png" target="_blank"><img src="img/msdial/msdial_step2.png" class="step-image"></a>
+
+      <!-- Step 3 -->
+      <h3>Step 3. Set measurement parameters</h3>
+      <p>
+            Set the measurement parameters, including “Ionization type”(select according to the experiment; for routine untargeted metabolomics, choose LC-MS/MS), “Separation type” (select according to the experiment; for routine untargeted metabolomics, choose LC)
+      </p>
+      <p>
+            “Collision type” (select according to the experiment; for routine untargeted metabolomics, choose LC-ESI, CID), “Data type” (for routine untargeted metabolomics, select Centroid), “Ion mode” (select Positive or Negative according to the experiment, and note that positive and negative ion data must be processed in separate projects), and “Target omics" (for metabolomics, select Metabolomics/Lipidomics; for dedicated lipidomics analysis, you may optionally select "Lipidomics"). After configuration, click “Next”.
+      </p>
+      <p>
+            <strong>Note:</strong> It is critical that positive and negative ion mode data be processed in separate projects; mixing them in a single project will lead to abnormal peak alignment and identification results. 
+      </p>
+      <a href="img/msdial/msdial_step3.png" target="_blank"><img src="img/msdial/msdial_step3.png" class="step-image"></a>
+
+
+      <!-- Step 4 -->
+      <h3>Step 4. Data collection</h3>
+      <p>
+            Set MS1/MS2 tolerances and data acquisition parameters. If processing large datasets, you can reduce runtime by setting the multithreading option in the 'Advanced' menu.
+      </p>
+     
+      <a href="img/msdial/msdial_step4.png" target="_blank"><img src="img/msdial/msdial_step4.png" class="step-image"></a>
+      <p>
+            The parameter settings recommended in the table below are for reference only. For actual use, please adjust them according to your specific instrument and conditions.
+      </p>
+
+      <table class="param-table">
+      <thead>
+      <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Recommended Range</th>
+      </tr>
+      </thead>
+
+      <tbody>
+
+      <tr>
+            <td>MS1 m/z range</td>
+            <td>Mass-to-charge scan range for MS1</td>
+            <td>Same as the acquisition method; for routine metabolomics: 50–1500 m/z</td>
+      </tr>
+
+      <tr>
+            <td>MS2 m/z range</td>
+            <td>Mass-to-charge scan range for MS2</td>
+            <td>Same as the acquisition method; for routine metabolomics: 50–1500 m/z</td>
+      </tr>
+
+      <tr>
+            <td>Retention time start</td>
+            <td>Start point of chromatographic retention time</td>
+            <td>Set according to the gradient; recommended to exclude solvent front (e.g., 0.5 min) to avoid dead-volume peaks</td>
+      </tr>
+
+      <tr>
+            <td>Retention time end</td>
+            <td>End point of chromatographic retention time</td>
+            <td>Keep the same as the total gradient runtime (e.g., 20 min)</td>
+      </tr>
+
+      <tr>
+            <td>MS1 mass tolerance</td>
+            <td>Mass tolerance (precursor ion)</td>
+            <td>
+            • High-resolution Orbitrap: 5–10 ppm (~0.0025–0.005 Da)<br>
+            • TOF: 10–20 ppm (~0.005–0.01 Da)<br>
+            • Low-resolution: 0.05–0.1 Da
+            </td>
+      </tr>
+
+      <tr>
+            <td>MS2 mass tolerance</td>
+            <td>Mass tolerance (fragment ion)</td>
+            <td>
+            • High-resolution Orbitrap: 10–15 ppm (~0.005–0.0075 Da)<br>
+            • TOF: 15–25 ppm (~0.0075–0.0125 Da)<br>
+            • Low-resolution: 0.05–0.1 Da
+            </td>
+      </tr>
+
+      <tr>
+            <td>Number of threads</td>
+            <td>Number of parallel processing threads</td>
+            <td>Set to the number of CPU cores (max. 16 threads); significantly speeds up processing for large batch samples</td>
+      </tr>
+
+      </tbody>
+      </table>      
+      <!-- Step 5 -->
+      <h3>Step 5. Peak detection</h3>
+      <p>
+            This step is used to set the MS1 peak detection rules, which determine the number and quality of metabolite features extracted.
+      </p>
+
+      <table class="param-table">
+      <thead>
+      <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Recommended Settings &amp; Notes</th>
+      </tr>
+      </thead>
+
+      <tbody>
+
+      <tr>
+            <td>Peak detection type</td>
+            <td>Peak detection algorithm type</td>
+            <td>
+            Recommended: <strong>Linear weighted moving average (LWMA)</strong> –
+            suitable for most LC-MS data
+            </td>
+      </tr>
+
+      <tr>
+            <td>Minimum peak height</td>
+            <td>Minimum peak height threshold</td>
+            <td>
+            Core parameter determining detection sensitivity.<br><br>
+
+            • Orbitrap high-resolution MS: 1E3 – 1E4<br>
+            • TOF MS: 1E4 – 5E4<br><br>
+
+            Value should at least match the minimum threshold for MS2 trigger.<br>
+            Too high → loss of low-abundance metabolites.<br>
+            Too low → introduction of many noise peaks.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Mass slice width</td>
+            <td>Mass slice width</td>
+            <td>
+            Match with MS1 mass tolerance.<br>
+            • High-resolution MS: 0.01 Da<br>
+            • TOF MS: 0.02 Da
+            </td>
+      </tr>
+
+      <tr>
+            <td>Smoothing level</td>
+            <td>Smoothing level</td>
+            <td>
+            Recommended: 2–3.<br>
+            Higher values provide smoother peak shapes and reduce noise,
+            but excessive smoothing may cause narrow peaks to be lost.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Minimum peak width</td>
+            <td>Minimum peak width</td>
+            <td>
+            Set according to chromatographic peak width.<br>
+            • UPLC: 5–10 scan points<br>
+            • Conventional HPLC: 10–15 scan points
+            </td>
+      </tr>
+
+      <tr>
+            <td>Exclusion Mass list</td>
+            <td>Exclusion list</td>
+            <td>
+            Import a list of m/z values for known contaminants,
+            internal standards, plasticizers, etc.<br>
+            These ions will be excluded during peak detection,
+            reducing interfering peaks.
+            </td>
+      </tr>
+
+      </tbody>
+      </table> 
+      <p>
+            <strong>Key optimization tip:</strong> It is recommended to run a preexperiment using 1–2 representative samples. Adjust the minimum peak height threshold to ensure the number of peaks falls within a reasonable range (for typical serum/tissue samples, 5000–20000 peaks per sample is recommended), avoiding excessive extraction of noise peaks.
+      </p>    
+      <p>
+            After completing the settings, click <strong>Next</strong>.
+      </p> 
+      <a href="img/msdial/msdial_step5.png" target="_blank"><img src="img/msdial/msdial_step5.png" class="step-image"></a>
+      <!-- Step 6 -->
+      <h3>Step 6. Spectrum deconvolution</h3>
+      <p>
+            This step performs MS/MS deconvolution to extract clean MS/MS spectra for subsequent compound identification.
+      </p>
+      <p>
+            For “MS/MS abundance cutoff” (MS/MS abundance cutoff threshold), Used to filter out noisy fragment ions in MS/MS spectra. Recommended: 0 (no cutoff). If MS/MS spectra are too noisy, set to<strong> 100–500</strong>, but must be lower than the minimum MS1 peak height threshold.
+      </p>
+      <p>
+            After completing the settings, click <strong>Next</strong>.
+      </p>
+
+      <a href="img/msdial/msdial_step6.png" target="_blank"><img src="img/msdial/msdial_step6.png" class="step-image"></a>
+      <!-- Step 7 -->
+      <h3>Step 7. Identification</h3>
+      <p>
+            Set up a structural identification database for structural annotation.
+      </p>
+
+      <a href="img/msdial/msdial_step7.png" target="_blank"><img src="img/msdial/msdial_step7.png" class="step-image"></a>
+      <!-- Step 8 -->
+      <h3>Step 8. Adduct ion</h3>
+      <p>
+           Select common adduct ion forms according to positive or negative polarity. For positive polarity, typically select [M+H]⁺, [2M+H]⁺, [M+Na]⁺, and [2M+Na]⁺; for negative polarity, typically select [M–H]⁻.
+      </p>
+
+
+      <a href="img/msdial/msdial_step8.png" target="_blank"><img src="img/msdial/msdial_step8.png" class="step-image"></a>
+      <!-- Step 9 -->
+      <h3>Step 9. Alignment parameters</h3>
+
+      <a href="img/msdial/msdial_step9.png" target="_blank"><img src="img/msdial/msdial_step9.png" class="step-image"></a>
+      <p>
+            Below are the recommended settings for each alignment parameter, based on typical LC-MS metabolomics workflows (e.g., using MS-DIAL, MZmine).
+      </p>
+
+      <table class="param-table">
+      <thead>
+      <tr>
+            <th>Parameter</th>
+            <th>Recommendation</th>
+            <th>Explanation</th>
+      </tr>
+      </thead>
+
+      <tbody>
+
+      <tr>
+            <td>Result name</td>
+            <td>Keep auto-generated or use a meaningful name (e.g., Alignment_Project_Date)</td>
+            <td>Helps track different alignment runs.</td>
+      </tr>
+
+      <tr>
+            <td>Reference file</td>
+            <td>Select a representative QC sample or pooled sample</td>
+            <td>Typically the QC with the most detected features or the middle injection of a QC batch.</td>
+      </tr>
+
+      <tr>
+            <td>Retention time tolerance</td>
+            <td>0.05 – 0.2 min (3–12 seconds)</td>
+            <td>
+            For UPLC, start with 0.1 min.<br>
+            For HPLC, can be 0.2–0.3 min.<br>
+            Must match chromatographic reproducibility.
+            </td>
+      </tr>
+
+      <tr>
+            <td>MS1 tolerance</td>
+            <td>0.01 – 0.02 Da for high-resolution MS (Orbitrap/TOF); 0.05 Da for low-resolution</td>
+            <td>
+            The shown 0.015 Da is appropriate for Orbitrap at m/z &lt; 400.<br>
+            Adjust to your instrument’s mass accuracy.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Retention time factor</td>
+            <td>0.5 (default)</td>
+            <td>
+            Weight for RT distance in alignment scoring (0–1).<br>
+            0.5 gives equal weight to RT and m/z.<br>
+            Very stable RT: increase to 0.7–0.9<br>
+            Less stable RT: decrease to 0.3
+            </td>
+      </tr>
+
+      <tr>
+            <td>MS1 factor</td>
+            <td>0.5 (default)</td>
+            <td>
+            Weight for m/z distance.<br>
+            Together with RT factor, should sum to 1.<br>
+            Keep 0.5 unless one dimension is much more reliable.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Peak count filter</td>
+            <td>0% (no filter) initially</td>
+            <td>
+            Remove features appearing in less than X% of samples.<br>
+            Set after alignment (e.g., 50% in at least one group), but start with 0 to avoid losing low-abundance metabolites.
+            </td>
+      </tr>
+
+      <tr>
+            <td>N% detected in at least one group</td>
+            <td>0% initially</td>
+            <td>
+            Similar to above.<br>
+            Usually set later during statistical filtering (e.g., 50% or 80% within group).
+            </td>
+      </tr>
+
+      <tr>
+            <td>Remove features based on blank information</td>
+            <td>Checked ✔️</td>
+            <td>
+            Highly recommended to remove background or contaminant peaks present in blank samples.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Sample max / blank average</td>
+            <td>5 – 10 fold change</td>
+            <td>
+            Keep features where the maximum intensity in real samples is ≥5× the average intensity in blanks.<br>
+            5 is a good starting point; increase to 10 for stricter cleaning.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Keep 'reference matched' metabolite features</td>
+            <td>Checked ✔️</td>
+            <td>
+            Retain features matching the reference library (if used).<br>
+            Important for targeted or semi-targeted work.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Keep 'suggested (w/o MS2)' metabolite features</td>
+            <td>Checked ✔️</td>
+            <td>
+            Keep features putatively matched by MS1 and RT but lacking MS2 confirmation.<br>
+            Many features may fall into this category.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Keep removable features and assign the tag</td>
+            <td>Unchecked □ (or check if review is needed)</td>
+            <td>
+            If checked, removed features are retained but tagged as “removable”.<br>
+            Useful for manual inspection.<br>
+            Usually unchecked for final clean feature tables.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Gap filling by compulsion</td>
+            <td>Checked ✔️</td>
+            <td>
+            Fill missing peak intensities from raw data after alignment.<br>
+            Essential for obtaining a complete feature table.
+            </td>
+      </tr>
+
+      <tr>
+            <td>Do alignment for ref.matched peaks only</td>
+            <td>Unchecked □</td>
+            <td>
+            Align all detected peaks.<br>
+            Checking this restricts alignment only to library-matched peaks,<br>
+            which is not recommended for untargeted metabolomics.
+            </td>
+      </tr>
+
+      <ul>
+            <h3>General tips:</h3>
+            <li>Start with the default/recommended values, then adjust based on visual inspection of alignment results (e.g., check extracted ion chromatograms of a few metabolites across samples).</li>
+            <li>Use QC samples to evaluate alignment quality (tight RT and m/z distribution).</li>      
+            <li>After alignment, run the “Run” button to generate the feature table.</li>
+      </ul>
+      </tbody>
+      </table>
+
+      <!-- Step 10 -->
+      <h3>Step 10. Isotope tracking</h3>
+
+      <a href="img/msdial/msdial_step10.png" target="_blank"><img src="img/msdial/msdial_step10.png" class="step-image"></a>
+
+      <!-- Step 11 -->
+      <h3>Step 11. Export</h3>
+      <p>
+           Export MGF and CSV files for subsequent analysis.
+      </p>
+      <a href="img/msdial/msdial_step11.png" target="_blank"><img src="img/msdial/msdial_step11.png" class="step-image"></a>
+
+
+      </div>
+      </section>
+
+    <!-- 备案号添加 -->
+      <div style="width:360px;margin:36px auto 0 auto;text-align:center;white-space: nowrap;">
+            <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002088" target="_blank" style="text-decoration:none;" rel="noreferrer">
+            <img src="icon/beian.png" style="width:13px;height:13px;vertical-align:middle;">
+            <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘公网安备43010402002088号</span>
+            </a>
+            <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" style="text-decoration:none;margin-left:8px;" rel="noreferrer">
+            <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘ICP备2025102844号-1</span>
+            </a>
+      </div>
+  </div>
+</body>
+</html>

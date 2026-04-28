@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MZmine Workflow for DeepMass</title>
+
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(255,255,255,0.08);
+      --text-light: #e8f1ff;
+      --muted-light: #b7c8e6;
+      --border: rgba(255,255,255,0.14);
+      --shadow: 0 24px 60px rgba(2,8,23,0.35);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --card: #ffffff;
+      --text: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+      html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #07111f;
+      }
+
+      body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+      radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 30%),
+      radial-gradient(circle at top right, rgba(14,165,233,0.18), transparent 26%),
+      linear-gradient(180deg, #07111f 0%, #0a1730 45%, #091425 100%);
+      color: var(--text-light);
+      line-height: 1.7;
+      }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 72px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(16px);
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg,#2563eb,#38bdf8);
+      display: grid;
+      place-items: center;
+    }
+
+    .top-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .top-links a {
+      padding: 8px 14px;
+      border-radius: 999px;
+      color: var(--muted-light);
+    }
+
+    .top-links a:hover {
+      background: rgba(255,255,255,0.08);
+      color: white;
+    }
+
+    .hero {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+      padding: 56px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(96,165,250,0.12);
+      color: #cfe3ff;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 13px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+    }
+
+    .hero p {
+      color: var(--muted-light);
+      max-width: 860px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 28px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted-light);
+    }
+
+    .mini-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(14,165,233,0.10);
+      color: #dbeafe;
+    }
+
+    .footer {
+      text-align: center;
+      color: #9fb5d8;
+      margin-top: 24px;
+    }
+
+      .step-image{
+      width:100%;
+      max-width:900px;
+      display:block;
+      margin:18px auto;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:0 14px 35px rgba(2,8,23,0.28);
+      }
+
+      /* Parameter Table */
+      .param-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:18px;
+      background:rgba(255,255,255,0.04);
+      border-radius:16px;
+      overflow:hidden;
+      font-size:0.98rem;
+      }
+
+      .param-table thead{
+      background:rgba(255,255,255,0.08);
+      }
+
+      .param-table th{
+      text-align:left;
+      padding:16px 18px;
+      color:#ffffff;
+      font-weight:700;
+      border-bottom:1px solid rgba(255,255,255,0.12);
+      }
+
+      .param-table td{
+      padding:16px 18px;
+      color:var(--muted-light);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      vertical-align:top;
+      }
+
+      .param-table tbody tr:last-child td{
+      border-bottom:none;
+      }
+
+      .param-table tbody tr:hover{
+      background:rgba(255,255,255,0.03);
+      }
+      .hero p {
+        width: 100%;
+        max-width: none;
+      }
+
+    @media (max-width: 960px) {
+      .hero { padding: 34px 24px; }
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- Top Navigation -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DM</div>
+        <div>DeepMASS2 Documentation</div>
+      </div>
+
+      <nav class="top-links">
+        <a href="handbooks.html">Home</a>
+        <a href="handbooks.html#data-processing">Data Processing</a>
+        <a href="handbooks.html#metadata">Input Format</a>
+        <a href="handbooks.html#results">Results</a>
+      </nav>
+    </header>
+
+      <!-- Hero -->
+      <section class="hero">
+      <div class="eyebrow">Introduction</div>
+
+      <h1>Mass spectrometry processing with XCMS</h1>
+
+      <p>
+            This script processes untargeted LC-MS/MS data using XCMS with standard steps: peak picking (centWave), retention time alignment (Obiwarp), peak grouping (PeakDensity), and gap filling. It then performs blank subtraction (ratio‑based filtering) and, for the retained features, extracts the best matching MS/MS spectra from the raw data in parallel. The final outputs are a feature quantification table (CSV) and the corresponding MS/MS spectra (MGF), ready for structural annotation with tools like DeepMass.
+      </p>
+
+      <p>
+            <strong>Before running, modify the file paths at the beginning of the script:</strong>
+
+      </p>
+      <ul>
+            <li><strong>data_dir</strong>: directory containing your .mzML raw files</li>
+            <li><strong>output_csv</strong>: path to save the feature quantification CSV</li>
+            <li><strong>output_mgf</strong>: path to save the MS/MS spectra MGF file</li>
+      </ul>
+
+    </section>
+
+      <!-- Data Processing Overview -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Mass spectrometry processing with XCMS</h2>
+      <ol>
+            <h3>Instructions</h3>
+            <li>Modify the three file paths at the top of the script according to your system.</li>
+            <li>Ensure your blank .mzML files contain the keyword "Blank" (case-insensitive) in their names, or use blank_indices to specify column indices manually.</li>
+            <li>Adjust XCMS parameters if needed (e.g., ppm, peakwidth, snthresh) for your data quality.</li>
+            <li>Run the script in R (≥ 4.0). It will automatically install missing packages.</li>
+            <li>The output CSV and MGF files are ready for DeepMass.</li>
+      </ol>
+      <p>
+            <strong>Disclaimer:</strong> "The code provided below is only an example and for reference only. Specific parameters or certain steps can be modified according to your specific requirements. This code is not guaranteed to be suitable for all mass spectrometry processing workflows."
+      </p>
+      </div>
+
+      </section>
+
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Code:</h2>
+      <pre><code>
+            # ============================================================
+            # Non-targeted LC-MS/MS data processing with XCMS
+            # Outputs: feature table (CSV) + MS/MS spectra (MGF) for DeepMass
+            # ============================================================
+
+            # Load required packages
+            suppressMessages({
+            library(xcms)
+            library(MSnbase)
+            library(foreach)
+            library(doParallel)
+            })
+
+            # ==================== USER PARAMETERS (MODIFY THESE) ====================
+            # --- File paths ---------------------------------------------------------
+            data_dir <- "path/to/your/mzML/files"          # directory containing .mzML files
+            output_csv <- "path/to/output/feature_table.csv"
+            output_mgf <- "path/to/output/spectra.mgf"
+
+            # --- Blank sample identification -----------------------------------------
+            blank_pattern <- "Blank"                       # keyword in blank file names (case-insensitive)
+            # blank_indices <- c(1,2)                     # alternative: specify blank column indices
+
+            # --- MS2 matching parameters --------------------------------------------
+            ms2_ppm <- 20                                  # MS2 precursor mass tolerance (ppm)
+            ms2_rt_window <- 5                             # retention time window (seconds)
+
+            # --- Blank subtraction threshold -----------------------------------------
+            blank_ratio_threshold <- 3                     # sample/blank intensity ratio threshold
+
+            # --- Parallel computing -------------------------------------------------
+            n_cores <- max(1, parallel::detectCores() - 1) # number of CPU cores to use
+
+            # --- XCMS parameters (adjust as needed) ---------------------------------
+            ppm <- 10
+            peakwidth <- c(5, 20)
+            snthresh <- 10
+            prefilter <- c(3, 100)
+            binSize <- 0.25
+            center <- 1
+            bw <- 5
+            minFraction <- 0.5
+            minSamples <- 2
+
+            # ==================== READ DATA ====================
+            raw_files <- list.files(data_dir, pattern = "\\.mzML$", full.names = TRUE)
+            if (length(raw_files) == 0) stop("No .mzML files found in data_dir")
+            raw_data <- readMSData(raw_files, msLevel. = 1:2, mode = "onDisk")
+
+            # ==================== XCMS PROCESSING ====================
+            ms1_data <- filterMsLevel(raw_data, 1)
+            cwp <- CentWaveParam(ppm = ppm, peakwidth = peakwidth, snthresh = snthresh,
+                              prefilter = prefilter, mzCenterFun = "wMean", integrate = 1)
+            xdata <- findChromPeaks(ms1_data, param = cwp)
+
+            # RT alignment (serial to avoid parallel errors)
+            library(BiocParallel)
+            register(SerialParam())
+            xdata <- adjustRtime(xdata, param = ObiwarpParam(binSize = binSize, center = center))
+
+            # Grouping
+            pdp <- PeakDensityParam(sampleGroups = rep(1, length(raw_files)),
+                                    bw = bw, minFraction = minFraction, minSamples = minSamples)
+            xdata <- groupChromPeaks(xdata, param = pdp)
+
+            # Gap filling
+            xdata <- fillChromPeaks(xdata)
+
+            # Feature matrix
+            feature_matrix <- featureValues(xdata, value = "into")
+            feature_def <- featureDefinitions(xdata)
+
+            # ==================== BLANK SUBTRACTION ====================
+            blank_idx <- grep(blank_pattern, basename(raw_files), ignore.case = TRUE)
+            if (length(blank_idx) == 0) {
+            warning("No blank samples found – skipping blank subtraction")
+            keep_final <- rep(TRUE, nrow(feature_matrix))
+            intensity_corrected <- NULL
+            } else {
+            sample_idx <- setdiff(seq_len(ncol(feature_matrix)), blank_idx)
+            blank_means <- rowMeans(feature_matrix[, blank_idx, drop = FALSE], na.rm = TRUE)
+            intensity_corrected <- feature_matrix[, sample_idx, drop = FALSE]
+            intensity_corrected <- sweep(intensity_corrected, 1, blank_means, FUN = "-")
+            intensity_corrected[intensity_corrected < 0] <- 0
+
+            max_int <- apply(intensity_corrected, 1, max, na.rm = TRUE)
+            ratio <- ifelse(blank_means == 0 & max_int == 0, 0, max_int / (blank_means + 1e-9))
+            keep_ratio <- !is.na(ratio) & ratio > blank_ratio_threshold
+            has_signal <- rowSums(intensity_corrected > 0, na.rm = TRUE) >= 1
+            keep_final <- keep_ratio & has_signal
+            cat("Features after blank subtraction:", sum(keep_final), "\n")
+            }
+
+            selected_ids <- rownames(feature_matrix)[keep_final]
+            if (length(selected_ids) == 0) stop("No features passed blank filtering")
+
+            # ==================== MS2 SPECTRA EXTRACTION (PARALLEL) ====================
+            ms2_data <- filterMsLevel(raw_data, 2)
+            ms2_spectra <- spectra(ms2_data)
+            if (length(ms2_spectra) == 0) stop("No MS2 spectra found")
+            ms2_rt <- sapply(ms2_spectra, function(sp) rtime(sp)[1])
+            ms2_premz <- sapply(ms2_spectra, function(sp) precursorMz(sp)[1])
+
+            match_ms2 <- function(mz, rt, ms2_rt, ms2_premz, ms2_sp, ppm, rt_win) {
+            mz_err <- (ppm / 1e6) * mz
+            rt_ok <- ms2_rt >= (rt - rt_win) & ms2_rt <= (rt + rt_win)
+            if (!any(rt_ok)) return(NULL)
+            premz_ok <- !is.na(ms2_premz) & ms2_premz >= (mz - mz_err) & ms2_premz <= (mz + mz_err)
+            idx <- which(rt_ok & premz_ok)
+            if (length(idx) == 0) return(NULL)
+            if (length(idx) > 1) idx <- idx[which.min(abs(ms2_rt[idx] - rt))]
+            sp <- ms2_sp[[idx]]
+            keep <- intensity(sp) > 0
+            if (sum(keep) == 0) return(NULL)
+            list(mz = mz(sp)[keep], int = intensity(sp)[keep])
+            }
+
+            # Subset features that passed blank filtering
+            feat_sub <- feature_def[selected_ids, , drop = FALSE]
+            feat_list <- split(feat_sub, seq_len(nrow(feat_sub)))
+
+            cl <- makeCluster(n_cores)
+            registerDoParallel(cl)
+            results <- foreach(feat = feat_list, .packages = "MSnbase") %dopar% {
+            feat_id <- rownames(feat)
+            match <- match_ms2(feat$mzmed, feat$rtmed, ms2_rt, ms2_premz, ms2_spectra,
+                              ppm = ms2_ppm, rt_win = ms2_rt_window)
+            if (is.null(match)) return(NULL)
+            peak_str <- paste(paste(match$mz, match$int, sep = " "), collapse = "\n")
+            block <- c("BEGIN IONS",
+                        paste0("TITLE=", feat_id),
+                        sprintf("PEPMASS=%f", feat$mzmed),
+                        sprintf("RTINSECONDS=%f", feat$rtmed),
+                        "CHARGE=1+",
+                        peak_str,
+                        "END IONS")
+            list(feature_id = feat_id, mgf = block)
+            }
+            stopCluster(cl)
+
+            # Collect successful matches
+            success_ids <- c()
+            mgf_lines <- c()
+            for (r in results) {
+            if (!is.null(r)) {
+            success_ids <- c(success_ids, r$feature_id)
+            mgf_lines <- c(mgf_lines, r$mgf)
+            }
+            }
+            if (length(success_ids) == 0) stop("No MS2 spectra matched")
+
+            writeLines(mgf_lines, output_mgf)
+            cat("MGF written:", output_mgf, "\n")
+
+            # ==================== FINAL CSV ====================
+            if (exists("intensity_corrected") && !is.null(intensity_corrected)) {
+            final_mat <- intensity_corrected[success_ids, , drop = FALSE]
+            final_tab <- data.frame(
+            feature_id = rownames(final_mat),
+            mz = feature_def[success_ids, "mzmed"],
+            rt_med = feature_def[success_ids, "rtmed"],
+            final_mat,
+            stringsAsFactors = FALSE,
+            check.names = FALSE
+            )
+            } else {
+            raw_quant <- feature_matrix[success_ids, , drop = FALSE]
+            final_tab <- cbind(feature_id = rownames(raw_quant),
+                              mz = feature_def[success_ids, "mzmed"],
+                              rt_med = feature_def[success_ids, "rtmed"],
+                              as.data.frame(raw_quant))
+            }
+            write.csv(final_tab, file = output_csv, row.names = FALSE)
+            cat("CSV written:", output_csv, "\n")
+            cat(paste("Final CSV rows:", nrow(final_tab), " | MGF entries:", length(success_ids), "\n"))
+            if (nrow(final_tab) == length(success_ids)) cat("✓ Row count matches MGF entries.\n")
+      </code></pre>
+      </div>
+
+      </section>
+
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Notes</h2>
+
+      <ol>
+            <li>Parallel processing speeds up MS2 matching; reduce n_cores if memory is limited.</li>
+            <li>The MS2 matching tolerance (ms2_ppm, ms2_rt_window) should reflect your instrument’s accuracy.</li>
+            <li>If no blank samples are detected, the script skips subtraction and uses all features (still filtered by MS2 availability).</li>
+      </ol>
+      </div>
+      </section>
+
+    <!-- 备案号添加 -->
+      <div style="width:360px;margin:36px auto 0 auto;text-align:center;white-space: nowrap;">
+            <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002088" target="_blank" style="text-decoration:none;" rel="noreferrer">
+            <img src="icon/beian.png" style="width:13px;height:13px;vertical-align:middle;">
+            <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘公网安备43010402002088号</span>
+            </a>
+            <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" style="text-decoration:none;margin-left:8px;" rel="noreferrer">
+            <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘ICP备2025102844号-1</span>
+            </a>
+      </div>
+  </div>
+</body>
+</html>

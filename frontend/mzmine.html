@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MZmine Workflow for DeepMass</title>
+
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(255,255,255,0.08);
+      --text-light: #e8f1ff;
+      --muted-light: #b7c8e6;
+      --border: rgba(255,255,255,0.14);
+      --shadow: 0 24px 60px rgba(2,8,23,0.35);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --card: #ffffff;
+      --text: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+      html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #07111f;
+      }
+
+      body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+      radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 30%),
+      radial-gradient(circle at top right, rgba(14,165,233,0.18), transparent 26%),
+      linear-gradient(180deg, #07111f 0%, #0a1730 45%, #091425 100%);
+      color: var(--text-light);
+      line-height: 1.7;
+      }
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 72px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(16px);
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg,#2563eb,#38bdf8);
+      display: grid;
+      place-items: center;
+    }
+
+    .top-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .top-links a {
+      padding: 8px 14px;
+      border-radius: 999px;
+      color: var(--muted-light);
+    }
+
+    .top-links a:hover {
+      background: rgba(255,255,255,0.08);
+      color: white;
+    }
+
+    .hero {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+      padding: 56px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(96,165,250,0.12);
+      color: #cfe3ff;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 13px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+    }
+
+    .hero p {
+      color: var(--muted-light);
+      max-width: 860px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 28px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted-light);
+    }
+
+    .mini-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(14,165,233,0.10);
+      color: #dbeafe;
+    }
+
+    .footer {
+      text-align: center;
+      color: #9fb5d8;
+      margin-top: 24px;
+    }
+
+      .step-image{
+      width:100%;
+      max-width:900px;
+      display:block;
+      margin:18px auto;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:0 14px 35px rgba(2,8,23,0.28);
+      }
+
+      /* Parameter Table */
+      .param-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:18px;
+      background:rgba(255,255,255,0.04);
+      border-radius:16px;
+      overflow:hidden;
+      font-size:0.98rem;
+      }
+
+      .param-table thead{
+      background:rgba(255,255,255,0.08);
+      }
+
+      .param-table th{
+      text-align:left;
+      padding:16px 18px;
+      color:#ffffff;
+      font-weight:700;
+      border-bottom:1px solid rgba(255,255,255,0.12);
+      }
+
+      .param-table td{
+      padding:16px 18px;
+      color:var(--muted-light);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      vertical-align:top;
+      }
+
+      .param-table tbody tr:last-child td{
+      border-bottom:none;
+      }
+
+      .param-table tbody tr:hover{
+      background:rgba(255,255,255,0.03);
+      }
+      .hero p {
+        width: 100%;
+        max-width: none;
+      }
+
+    @media (max-width: 960px) {
+      .hero { padding: 34px 24px; }
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- Top Navigation -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DM</div>
+        <div>DeepMASS2 Documentation</div>
+      </div>
+
+      <nav class="top-links">
+        <a href="handbooks.html">Home</a>
+        <a href="handbooks.html#data-processing">Data Processing</a>
+        <a href="handbooks.html#metadata">Input Format</a>
+        <a href="handbooks.html#results">Results</a>
+      </nav>
+    </header>
+
+      <!-- Hero -->
+      <section class="hero">
+      <div class="eyebrow">Introduction</div>
+
+      <h1>Mass spectrometry processing with MZmine</h1>
+
+      <p>
+      In non-targeted metabolomics research, MZmine is a powerful open-source software for processing mass spectrometry data. Below we describe how to use MZmine4 v4.3.0 with the DeepMass workflow.
+      </p>
+
+      </section>
+
+      <!-- Installation -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Installation</h2>
+
+      <p>
+            Download the 4.3.0 version of MZmine software (version MZmine v4.3.0) at:
+
+            <a href="https://github.com/mzmine/mzmine/releases?page=3" target="_blank">
+            https://github.com/mzmine/mzmine/releases?page=3
+            </a>
+      </p>
+      </div>
+      </section>
+
+      <!-- Data Processing Overview -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Data Processing with MZmine for DeepMass</h2>
+
+      <p>
+            In MZmine, a series of steps are required to process mass spectrometry data.
+            Here, we will introduce the key steps needed for processing LC-MS/MS data acquired in non-targeted mode (data dependent acquisition).
+      </p>
+
+      <p>
+            <strong>Disclaimer:</strong> The parameter settings in MZmine may vary depending on the instrument used,
+            acquisition parameters, and the samples being analyzed.
+            The following instructions serve only as basic guidelines when using MZmine with the DeepMass workflow.
+      </p>
+
+      <p>
+            Please consult the resources below for more details on MZmine processing:
+
+            The official documentation:
+            <a href="http://mzmine.github.io/documentation.html" target="_blank">
+            http://mzmine.github.io/documentation.html
+            </a>
+      </p>
+      </div>
+      </section>
+
+      <!-- Open Format -->
+      <section class="panel">
+      <div class="panel-inner">
+      <h2>Convert your LC-MS/MS Data to an Open Format</h2>
+
+      <p>
+            MZmine supports multiple input formats.
+            However, we recommend converting the files to mzML format before processing with MZmine 4.
+      </p>
+      </div>
+      </section>
+
+
+      <!-- Processing Steps -->
+      <section class="panel">
+      <div class="panel-inner">
+
+      <h2>Processing Steps</h2>
+
+      <p>
+            Below is a walk-through of all the steps required for processing LC-MS/MS data with MZmine for DeepMass.
+      </p>
+
+      <!-- Step 1 -->
+      <h3>Step 1. Import Files</h3>
+      <p>
+            Go to Menu:
+            <code>Raw data methods → Import MS data → Select files</code>
+      </p>
+      <p>
+            Import mzML LC-MS/MS files into MZmine.
+      </p>
+      <a href="img/mzmine/mzmine_step1.png" target="_blank"><img src="img/mzmine/mzmine_step1.png" class="step-image"></a>
+      <!-- Step 2 -->
+      <h3>Step 2. Mass Detection</h3>
+      <p>
+            Go to Menu:
+            <code>Raw data methods → Spectra processing → Mass detection → Set filter: MS1 level or MS2 level</code>
+      </p>
+      <p>
+            <strong>First, perform mass detection at the MS1 level.</strong>
+      </p>
+      <p>
+            <strong>Important note:</strong> Set an appropriate intensity threshold. Use the preview window to determine a threshold suitable for your data. In general, this value should be at least comparable to the minimum threshold set for triggering MS2 scan events (e.g., 1E3 for MAXIS-QTOF mode, and 1E4 for Q-Exactive mode).
+      </p>
+
+      <p>   
+            <strong>Perform mass detection on MS level 2. The same mass list name must be used.</strong>
+      </p>
+      <p>
+            <strong>Important note:</strong> Please ensure that the set intensity threshold reflects the noise level in the MS2 spectra. Typically, this value should be lower than that for MS1 (e.g., threshold of 1E2 for maXis QTOF; 1E4 for LTQ-XL Orbitrap; and 0 for Q-Exactive). If uncertain, you can set the threshold to 0.
+      </p>
+      <a href="img/mzmine/mzmine_step2.png" target="_blank"><img src="img/mzmine/mzmine_step2.png" class="step-image"></a>
+
+      <!-- Step 3 -->
+      <h3>Step 3. Chromatogram Building</h3>
+      <p>
+            Go to Menu:
+            <code>Feature detection → LC-MS → Chromatogram builder</code>
+      </p>
+      <p>
+           Starting from MZmine version 2.39, the original chromatogram builder tool is no longer used and has been replaced by the ADAP chromatogram builder. The ADAP module includes parameters related to minimum group size, number of scans, and group intensity threshold. For detailed instructions on these parameters, please refer to the ADAP user guide (<a href="https://github.com/mzmine/mzmine.github.io/blob/master/ADAP_user_manual.pdf" target="_blank">https://github.com/mzmine/mzmine.github.io/blob/master/ADAP_user_manual.pdf</a>). If you use the ADAP chromatogram builder, please be sure to cite the reference below.
+      </p>
+      <p>
+            Myers, O.D. et al, One Step Forward for Reducing False Positive and False Negative Compound Identifications from Mass Spectrometry Metabolomics Data: New Algorithms for Constructing Extracted Ion Chromatograms and Detecting Chromatographic Peaks. Anal. Che
+      </p>
+      <a href="img/mzmine/mzmine_step3.png" target="_blank"><img src="img/mzmine/mzmine_step3.png" class="step-image"></a>
+
+      <p>
+            <strong>Key parameter:</strong>
+            <code>m/z tolerance = 0.004 m/z or 15 ppm (TOF), 0.0015 m/z or 5 ppm (Orbitrap)</code>
+      </p>
+      <!-- Step 4 -->
+      <h3>Step 4. Feature Resolving</h3>
+      <p>
+            Go to Menu:
+            <code>Feature detection → Chromatogram resolving → Local minimum resolver</code>
+      </p>
+      <p>
+            Feature deconvolution separates co-eluting and overlapping chromatographic peaks. In the chromatograms constructed in the previous step, some peaks appear as double peaks or multiple peaks, as shown in the figure below. This step splits such multi-peaks into single peaks. A commonly used tool is the Local Minimum Resolver.
+      </p>
+      <p>
+            <strong>Important note:</strong> Please select both options: "MS1 to MS2 precursor tolerance (m/z)" and "Retention time filter". These values need to be determined according to your experimental conditions — specifically, based on the desired MS mass accuracy and the width of the chromatographic peaks. In addition, the parameter settings for the "Minimum absolute height" and the "Minimum scans" are consistent with those used in the previous step of chromatogram building.
+      </p>
+      <p>
+            <code>Example for a UHPLC colum (1.7 µm C18, 50 × 2.1 mm, flow rate of 0.5 mL/min):</code>
+
+      </p>
+      <ul>
+            <li><code>maXis-QTOF: 12 min gradient, 0.02 Da and 0.15 min</code></li>
+            <li><code>Q-Exactive: 5 min gradient, 0.01 Da and 0.1 min</code></li>
+      </ul>
+      <a href="img/mzmine/mzmine_step4.png" target="_blank"><img src="img/mzmine/mzmine_step4.png" class="step-image"></a>
+      <!-- Step 5 -->
+      <h3>Step 5. 13C Isotope Filter</h3>
+      <p>
+            Go to Menu:
+            <code>Feature list methods → Isotopes → 13C isotope filter (formerly: isotope grouper)</code>
+      </p>
+      <p>
+            Recommended parameter settings for this step:
+
+      </p>
+      <ul>
+            <li><code>m/z tolerance: 0.004 m/z or 15 ppm (high resolution)</code></li>
+            <li><code>Retention time tolerance: 0.1 min</code></li>
+            <li><code>Maximum charge: 1 or 2</code></li>
+      </ul>
+      <a href="img/mzmine/mzmine_step5.png" target="_blank"><img src="img/mzmine/mzmine_step5.png" class="step-image"></a>
+      <!-- Step 6 -->
+      <h3>Step 6. Feature Alignment</h3>
+      <p>
+            Go to Menu:
+            <code>Feature list methods → Alignment → Join aligner</code>
+      </p>
+      <p>
+            Integrate the features obtained from different samples to construct a feature table.
+      </p>
+      <h3>Parameter settings reference:</h3>
+
+      <table class="param-table">
+      <thead>
+      <tr>
+            <th>Parameter</th>
+            <th>Suggested Value</th>
+            <th>Explanation</th>
+      </tr>
+      </thead>
+
+      <tbody>
+      <tr>
+            <td>m/z tolerance</td>
+            <td>0.005–0.01 m/z</td>
+            <td>Set according to instrument mass accuracy</td>
+      </tr>
+
+      <tr>
+            <td>RT tolerance</td>
+            <td>0.05–0.2 min</td>
+            <td>Adjust based on chromatographic stability</td>
+      </tr>
+
+      <tr>
+            <td>RT correction</td>
+            <td>Enabled</td>
+            <td>Use LOESS or other methods to correct retention time drift</td>
+      </tr>
+
+      <tr>
+            <td>Weighting</td>
+            <td>m/z and RT</td>
+            <td>Typically give higher weight to m/z</td>
+      </tr>
+      </tbody>
+      </table>
+      <a href="img/mzmine/mzmine_step6.png" target="_blank"><img src="img/mzmine/mzmine_step6.png" class="step-image"></a>
+      <!-- Step 7 -->
+      <h3>Step 7. Feature List Filtering</h3>
+      <p>
+            Go to Menu:
+            <code>Feature list methods → Feature list filtering → Feature list rows filter</code>
+      </p>
+      <p>
+            Parameter settings page: In this example, only features with a retention time in the range of 1-21.01 minutes and having MS2 information are considered.
+      </p>
+      <a href="img/mzmine/mzmine_step7.png" target="_blank"><img src="img/mzmine/mzmine_step7.png" class="step-image"></a>
+      <!-- Step 8 -->
+      <h3>Step 8. Export</h3>
+      <p>
+            Go to Menu:
+            <code>Feature list methods → Export feature lists → GNPS-feature based molecular networking</code>
+      </p>
+      <p>
+            Two files are exported as results: one is the .mgf file containing mass spectrometry information, and the other is the feature table .CSV file.
+      </p>
+
+      <a href="img/mzmine/mzmine_step8.png" target="_blank"><img src="img/mzmine/mzmine_step8.png" class="step-image"></a>
+      <!-- Step 9 -->
+      <h3>Step 9. Conclusion</h3>
+      <p>
+            Finally, we import the .mgf file exported from MZmine into DeepMass for structural annotation.
+      </p>
+
+
+      <p>
+            <strong>Disclaimer:</strong> All parameters shown in the figures of this instruction document are not intended as reference parameters. They need to be adjusted based on the actual instrument resolution, the chromatographic column used, the type of acquired data, and other specific conditions. This tutorial is intended to provide a general workflow for MZmine processing for DeepMass analysis, and the parameter settings described in the text are merely suggestions.
+      </p>
+
+      <div class="mini-note">
+            MZmine is ideal for users who prefer GUI-based workflows and manual parameter tuning,
+            while DeepMass uses the exported MGF for downstream molecular structure prediction.
+      </div>
+
+      </div>
+      </section>
+
+    <!-- 备案号添加 -->
+      <div style="width:360px;margin:36px auto 0 auto;text-align:center;white-space: nowrap;">
+            <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43010402002088" target="_blank" style="text-decoration:none;" rel="noreferrer">
+            <img src="icon/beian.png" style="width:13px;height:13px;vertical-align:middle;">
+            <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘公网安备43010402002088号</span>
+            </a>
+            <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" style="text-decoration:none;margin-left:8px;" rel="noreferrer">
+            <span style="color:#a5aaa3;font-size:10px;vertical-align:middle;">湘ICP备2025102844号-1</span>
+            </a>
+      </div>
+  </div>
+</body>
+</html>
